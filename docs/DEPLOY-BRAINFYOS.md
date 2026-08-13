@@ -117,18 +117,66 @@ sudo -u brainfyos ADMIN_PASSWORD='...' /usr/local/bin/brainfyos-run \
 
 A senha precisa ter no mínimo 12 caracteres.
 
-## Pendências de configuração
+## WhatsApp (WAHA)
 
-Estas variáveis estão vazias em `/etc/brainfyos/backend.env` e limitam funcionalidades até serem preenchidas:
+WAHA Core roda em Docker, com `--network host` para que o container alcance o backend em `127.0.0.1:8002` e o backend alcance o WAHA em `127.0.0.1:3000`. Como não há NAT do Docker, as regras do `ufw` continuam valendo e a porta 3000 não fica exposta.
+
+```bash
+docker ps --filter name=waha
+docker logs waha --tail 50
+```
+
+| Item | Valor |
+|---|---|
+| Imagem | `devlikeapro/waha:latest` (Core 2026.7.2) |
+| Engine | `WEBJS` |
+| Sessões | `/srv/brainfyos/waha/sessions` |
+| Mídia | `/srv/brainfyos/waha/media` |
+| API key | `/etc/brainfyos/.wahakey` (600) |
+| Dashboard | usuário `brainfyos`, senha em `/etc/brainfyos/.wahadash` |
+
+**GOWS não funciona nesta edição.** É recurso do WAHA Plus; a Core aceita o parâmetro e cai silenciosamente para WEBJS. O `.env.production.example` do projeto original vinha com `WAHA_DEFAULT_ENGINE=GOWS`, o que era enganoso — aqui está fixado em `WEBJS`.
+
+WEBJS usa Chromium: cerca de 450 MB de RAM ocioso, mais por sessão conectada.
+
+Fluxo de conexão pela aplicação:
+
+1. `POST /webhook/whatsapp/connect-waha` — cria a sessão e grava `waha_session_name` em `companies`
+2. `POST /webhook/whatsapp/waha/start-session` — inicia
+3. `GET /webhook/whatsapp/qrcode` — devolve o QR em PNG base64
+4. `GET /webhook/whatsapp/status` — acompanha até `WORKING`
+
+Webhooks do WAHA voltam para `http://127.0.0.1:8002/webhook/waha/callback`.
+
+## E-mail (Resend)
+
+| Variável | Valor |
+|---|---|
+| `SMTP_HOST` | `smtp.resend.com` |
+| `SMTP_PORT` | `587` (STARTTLS) |
+| `SMTP_USERNAME` | `resend` |
+| `SMTP_PASSWORD` | API key `re_...` |
+| `SMTP_FROM_EMAIL` | `noreply@mail.brainfyos.com.br` |
+
+O domínio verificado na Resend é o subdomínio **`mail.brainfyos.com.br`**, não o raiz. O remetente precisa pertencer a ele — enviar de `@brainfyos.com.br` é recusado. Os registros DKIM, SPF e MX estão na zona da Cloudflare.
+
+## Cloudflare
+
+O domínio é proxiado pela Cloudflare, então o certificado que o visitante vê é o dela, não o Let's Encrypt da origem. Pontos de atenção:
+
+- O modo SSL/TLS precisa ser **Full (strict)**. Em "Flexible" a Cloudflare fala HTTP com a origem, o nginx responde 301 e vira loop.
+- A renovação do Let's Encrypt usa HTTP-01 através da Cloudflare. Se falhar, migre para validação DNS-01 com a API da Cloudflare.
+- O IP real do cliente chega em `X-Forwarded-For`; `TRUST_PROXY_HEADERS=true` já está ligado.
+
+## Pendências de configuração
 
 | Variável | Impacto enquanto vazia |
 |---|---|
-| `OPENAI_API_KEY` | Agentes de IA não respondem |
-| `SMTP_HOST`, `SMTP_FROM_EMAIL`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Sem e-mail transacional; **recuperação de senha não funciona** |
-| `WAHA_ENABLED`, `WAHA_BASE_URL`, `WAHA_API_KEY` | Sem WhatsApp |
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | Sem integração com Google Agenda |
 
 Depois de editar o arquivo: `systemctl restart brainfyos-api brainfyos-worker brainfyos-beat`.
+
+Use `/usr/local/bin/brainfyos-setenv CHAVE=valor` para alterar variáveis sem editar o arquivo à mão — ele preserva permissões e é idempotente.
 
 ## Backup recomendado
 
