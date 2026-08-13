@@ -152,7 +152,15 @@ Não execute dois Celery Beat para o mesmo ambiente, pois tarefas periódicas po
 
 ## 6. Nginx
 
-Um virtual host básico, após ajustar domínio e caminho:
+Um virtual host básico, após ajustar domínio e caminho. O `map` abaixo vai no contexto http, por exemplo em `/etc/nginx/conf.d/websocket_upgrade.conf`:
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+```
+
 
 ```nginx
 server {
@@ -167,7 +175,7 @@ server {
         proxy_pass http://127.0.0.1:8002;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection $connection_upgrade;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -176,6 +184,10 @@ server {
     location ~ ^/(api|auth|webhook|media-sources|health|media|agents-sdk)(/|$) {
         proxy_pass http://127.0.0.1:8002;
         proxy_http_version 1.1;
+        # O chat ao vivo abre WebSocket em /api/chat-optimized/ws/unified,
+        # entao este bloco tambem precisa encaminhar o upgrade.
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

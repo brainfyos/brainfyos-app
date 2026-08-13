@@ -70,6 +70,30 @@ Só aumente `--workers` da API depois de validar pool de banco, memória, Redis 
 
 Roteamento: `/ws` e `^/(api|auth|webhook|media-sources|health|media|agents-sdk)` vão para o backend; `oauth-home`, `privacy-policy` e `terms` são estáticos sem extensão; o resto cai no SPA (`/index.html`).
 
+### WebSocket
+
+O template de Nginx do projeto original só coloca os headers de upgrade no bloco `/ws`, mas **o Chat Ao Vivo abre a conexão em `/api/chat-optimized/ws/unified`**, que cai no bloco `/api`. Sem os headers ali, o Starlette recebe uma requisição HTTP comum numa rota WebSocket e responde `404` — o frontend fica em "Reconectando..." para sempre.
+
+A correção usa um `map` no contexto http, em `/etc/nginx/conf.d/websocket_upgrade.conf`:
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+```
+
+E os dois blocos de proxy repassam:
+
+```nginx
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $connection_upgrade;
+```
+
+O `close` para requisições sem `Upgrade` mantém o tráfego HTTP normal inalterado.
+
+Para testar o handshake é preciso um cliente WebSocket real — `curl` não completa o handshake e devolve `404` mesmo quando a configuração está correta. Com sessão autenticada, a resposta esperada é `101` seguida de `{"type":"connection_established"}`.
+
 ## Firewall
 
 `ufw` ativo, liberando apenas 22, 80 e 443. PostgreSQL e Redis escutam somente em `127.0.0.1`.
