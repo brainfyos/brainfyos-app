@@ -7,7 +7,7 @@ export const branding = Object.freeze({
   appName: cleanText(import.meta.env.VITE_APP_NAME, 'BrainfyOS'),
   appDescription: cleanText(
     import.meta.env.VITE_APP_DESCRIPTION,
-    'Plataforma de atendimento, CRM e automacoes com IA',
+    'Infraestrutura de IA',
   ),
   supportName: cleanText(import.meta.env.VITE_SUPPORT_NAME, 'Equipe de suporte'),
   supportEmail: cleanText(import.meta.env.VITE_SUPPORT_EMAIL, 'suporte@brainfyos.com.br'),

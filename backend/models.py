@@ -232,6 +232,15 @@ class Contact(Base):
     # Nova coluna para indicar se o contato está em modo humano (True) ou modo IA (False)
     human_mode = Column(Boolean, default=False, nullable=False)
 
+    # Estado da conversa, mantido pelos workers de ingestão de mensagens.
+    last_message_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    unread_count = Column(Integer, default=0, nullable=False)
+
+    # Origem do contato (anúncio/campanha) e identificação no WhatsApp.
+    source_id = Column(String(255), nullable=True)
+    thumbnail_url = Column(Text, nullable=True)
+    sender_lid = Column(String(255), nullable=True)
+
     client = relationship("Client", back_populates="contacts")
     company = relationship("Company", foreign_keys=[company_id])
 
@@ -239,7 +248,7 @@ class Contact(Base):
     contact_tags = relationship("ContactTag", back_populates="contact", cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint('client_id', 'phone', name='uq_contact_client_phone'),
+        UniqueConstraint('client_id', 'company_id', 'phone', name='uq_contact_client_company_phone'),
     )
 
 

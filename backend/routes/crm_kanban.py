@@ -259,11 +259,16 @@ async def create_pipeline(
     # Criar pipeline usando serviço
     from backend.models import Pipeline
 
+    # created_by_user_id referencia "users". Contas administradoras criadas
+    # pelo bootstrap sao Client, cujo id nao existe naquela tabela, entao
+    # preencher com current_user.id causaria ForeignKeyViolation.
+    created_by_user_id = current_user.id if isinstance(current_user, User) else None
+
     pipeline = Pipeline(
         company_id=company_id,
         name=pipeline_data.name,
         description=pipeline_data.description,
-        created_by_user_id=current_user.id,
+        created_by_user_id=created_by_user_id,
         is_active=True
     )
 
