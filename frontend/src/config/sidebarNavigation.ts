@@ -158,9 +158,11 @@ export const SIDEBAR_MODULE_MENUS: Record<ModuleKey, MenuItem[]> = {
     },
   ],
 
-  // Brain, Resultados e Insights chegam nas próximas fases. Grupo vazio de
-  // propósito — o ProtectedLayout não renderiza grupo sem item.
-  inteligencia: [],
+  // Brain existe desde a Fase 2. Resultados e Insights continuam ocultos até
+  // terem página real — o grupo aparece com o que já funciona.
+  inteligencia: [
+    { path: '/brain', label: 'Brain', icon: Brain, permission: 'company', isNew: true },
+  ],
 
   ia: [
     { path: '/agents', label: 'Agentes', icon: Brain, permission: 'prompt', isNew: true },
@@ -319,6 +321,8 @@ export const resolveActiveModule = (pathname: string): ModuleKey => {
   }
 
   if (pathname.startsWith('/campaigns') || pathname.startsWith('/prompt/indicacoes')) return 'crescimento';
+
+  if (pathname.startsWith('/brain')) return 'inteligencia';
 
   if (pathname.startsWith('/agents') || pathname.startsWith('/flows') || pathname.startsWith('/prompt')) {
     return 'ia';

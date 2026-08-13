@@ -429,6 +429,10 @@ from backend.routes.onboarding_routes import router as onboarding_router
 app.include_router(control_router, prefix="/api", tags=["Control"])
 app.include_router(onboarding_router, prefix="/api", tags=["Onboarding"])
 
+# Brain Core: estrategia da empresa e composicao de contexto para agentes.
+from backend.routes.brain_routes import router as brain_router
+app.include_router(brain_router, prefix="/api", tags=["Brain"])
+
 app.include_router(whatsapp_campaign_routes_router, tags=["WhatsApp Campaigns"])
 from backend.routes import calendar_routes
 app.include_router(calendar_routes.router, prefix="/api/calendar", tags=["Calendar"])

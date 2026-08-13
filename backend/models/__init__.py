@@ -48,6 +48,13 @@ from backend.models.ai_provider_models import AIProviderCredential
 
 from backend.models.platform_models import PlatformAuditLog, PLATFORM_ROLE_OWNER
 
+from backend.models.brain_models import (
+    BrainBusinessProfile,
+    BrainIcpProfile,
+    BrainOffer,
+    BrainGoal,
+)
+
 from backend.models.onboarding_models import (
     OnboardingTemplate,
     OnboardingSection,
@@ -70,6 +77,10 @@ _all_exports.extend([
     'AIProviderCredential',
     'PlatformAuditLog',
     'PLATFORM_ROLE_OWNER',
+    'BrainBusinessProfile',
+    'BrainIcpProfile',
+    'BrainOffer',
+    'BrainGoal',
     'OnboardingTemplate',
     'OnboardingSection',
     'OnboardingItem',

@@ -54,6 +54,46 @@ TEMPLATE: Dict[str, Any] = {
             ],
         },
         {
+            "key": "estrategia",
+            "title": "Estratégia",
+            "description": (
+                "O que só você sabe sobre o negócio. É daqui que os agentes tiram "
+                "posicionamento, para quem vender e o que prometer."
+            ),
+            "items": [
+                {
+                    "key": "brain_strategy",
+                    "title": "Perfil estratégico",
+                    "description": "Modelo de negócio, posicionamento e proposta de valor.",
+                    "estimated_minutes": 10,
+                    "action_label": "Abrir Brain",
+                    "action_route": "/brain?tab=strategy",
+                    "requires_item_keys": ["company_profile"],
+                    "is_required": True,
+                },
+                {
+                    "key": "brain_icp",
+                    "title": "Definir o cliente ideal",
+                    "description": "Para quem a empresa vende, quais dores resolve e o que desqualifica um lead.",
+                    "estimated_minutes": 10,
+                    "action_label": "Definir ICP",
+                    "action_route": "/brain?tab=icp",
+                    "requires_item_keys": ["brain_strategy"],
+                    "is_required": True,
+                },
+                {
+                    "key": "brain_offer",
+                    "title": "Cadastrar a oferta principal",
+                    "description": "A promessa, o mecanismo e as provas que sustentam a venda.",
+                    "estimated_minutes": 10,
+                    "action_label": "Cadastrar oferta",
+                    "action_route": "/brain?tab=offers",
+                    "requires_item_keys": ["brain_icp"],
+                    "is_required": True,
+                },
+            ],
+        },
+        {
             "key": "conexoes",
             "title": "Conexões",
             "description": "Os canais por onde a operação acontece e o motor que responde.",
@@ -70,10 +110,13 @@ TEMPLATE: Dict[str, Any] = {
                 },
                 {
                     "key": "ai_provider",
-                    "title": "Configurar o provedor de IA",
-                    "description": "Informe a chave do provedor que vai executar os agentes.",
+                    "title": "Provedor de IA",
+                    "description": (
+                        "Já funciona com a infraestrutura da BrainfyOS. Use sua própria "
+                        "chave se preferir consumo e faturamento no seu provedor."
+                    ),
                     "estimated_minutes": 3,
-                    "action_label": "Configurar",
+                    "action_label": "Ver opções",
                     "action_route": "/company/ai-provider",
                     "requires_item_keys": ["company_profile"],
                     "is_required": True,
@@ -92,9 +135,15 @@ TEMPLATE: Dict[str, Any] = {
                     "estimated_minutes": 15,
                     "action_label": "Criar agente",
                     "action_route": "/agents",
-                    # A dependencia do exemplo do produto: so libera depois de
-                    # dados essenciais da empresa + uma integracao necessaria.
-                    "requires_item_keys": ["company_profile", "whatsapp_connect", "ai_provider"],
+                    # A dependencia do exemplo do produto: dados essenciais da
+                    # empresa + uma integracao necessaria. A estrategia entra
+                    # junto porque um agente sem Brain e um chatbot generico.
+                    "requires_item_keys": [
+                        "company_profile",
+                        "brain_strategy",
+                        "whatsapp_connect",
+                        "ai_provider",
+                    ],
                     "is_required": True,
                 },
                 {

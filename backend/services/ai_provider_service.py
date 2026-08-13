@@ -1,10 +1,29 @@
-"""OpenAI BYOK credential storage and per-company runtime helpers."""
+"""OpenAI credential storage and per-company runtime helpers.
+
+Two provider modes exist:
+
+``byok``
+    The workspace stored its own credential in ``ai_provider_credentials``.
+    It always wins when present and valid.
+
+``managed``
+    No workspace credential; the platform's own key runs the workload and the
+    existing ledger (``ai_usage_events``) attributes consumption per company.
+
+Managed is the default so a new workspace is operational on day one. The
+security contract that predates it is unchanged and still enforced: **no call
+site reads ``OPENAI_API_KEY`` directly.** Every caller goes through
+``get_company_openai_api_key`` / ``build_company_openai_run_config``, so there
+is exactly one place where a key is chosen, and one place to audit.
+"""
 
 from __future__ import annotations
 
+import logging
 import os
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from agents import RunConfig, trace
 from agents.models.openai_provider import OpenAIProvider
@@ -25,8 +44,18 @@ from backend.models import AIProviderCredential, AgentWorkforce
 from backend.runtime_settings import APP_NAME
 
 
+logger = logging.getLogger(__name__)
+
 OPENAI_PROVIDER = "openai"
 AI_PROVIDER_TOKEN_ENCRYPTION_KEY_ENV = "AI_PROVIDER_TOKEN_ENCRYPTION_KEY"
+
+AI_PROVIDER_MODE_BYOK = "byok"
+AI_PROVIDER_MODE_MANAGED = "managed"
+# Chave global da plataforma. Só é usada pelo modo managed, e só através do
+# resolvedor deste módulo.
+PLATFORM_OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
+# Interruptor para desligar o managed e voltar ao BYOK estrito, sem redeploy.
+ALLOW_MANAGED_PROVIDER_ENV = "AI_PROVIDER_ALLOW_MANAGED"
 DEFAULT_OPENAI_VALIDATION_TIMEOUT_SECONDS = 15.0
 REQUIRED_OPENAI_RUNTIME_MODEL = "gpt-4o-mini"
 REQUIRED_OPENAI_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
@@ -425,19 +454,105 @@ def mark_company_openai_validation_error(
     credential.last_error = str(exc)
 
 
-def get_company_openai_api_key(db: Session, company_id: int) -> str:
-    """Resolve one validated company credential without global process state."""
+@dataclass(frozen=True)
+class AIProviderResolution:
+    """Credencial escolhida para uma execução, e por quê."""
 
+    api_key: str
+    mode: str
+    provider: str = OPENAI_PROVIDER
+
+
+def managed_provider_is_allowed() -> bool:
+    raw = _clean_env_value(os.getenv(ALLOW_MANAGED_PROVIDER_ENV))
+    if not raw:
+        return True
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def platform_managed_openai_api_key() -> Optional[str]:
+    """Chave global da plataforma, quando o modo managed está habilitado."""
+    if not managed_provider_is_allowed():
+        return None
+    return _clean_env_value(os.getenv(PLATFORM_OPENAI_API_KEY_ENV)) or None
+
+
+def resolve_company_openai_credential(db: Session, company_id: int) -> AIProviderResolution:
+    """Escolhe a credencial de uma company: BYOK primeiro, managed depois.
+
+    Uma credencial própria presente mas inválida **não** cai para managed: a
+    empresa declarou a intenção de usar a chave dela, e trocá-la silenciosamente
+    pela da plataforma cobraria consumo de quem não pediu isso. O erro é dito.
+    """
     credential = get_company_ai_provider_credential(db, company_id)
-    if credential is None:
-        raise AIProviderNotConfiguredError(
-            "Chave OpenAI não configurada para a empresa ativa"
+
+    if credential is not None:
+        if credential.status != "valid":
+            raise AIProviderNotConfiguredError(
+                "Chave OpenAI da empresa ativa não está validada"
+            )
+        return AIProviderResolution(
+            api_key=decrypt_openai_api_key(credential.api_key_encrypted),
+            mode=AI_PROVIDER_MODE_BYOK,
         )
-    if credential.status != "valid":
-        raise AIProviderNotConfiguredError(
-            "Chave OpenAI da empresa ativa não está validada"
+
+    managed_key = platform_managed_openai_api_key()
+    if managed_key:
+        return AIProviderResolution(api_key=managed_key, mode=AI_PROVIDER_MODE_MANAGED)
+
+    raise AIProviderNotConfiguredError(
+        "Chave OpenAI não configurada para a empresa ativa"
+    )
+
+
+def describe_company_ai_provider_mode(db: Session, company_id: int) -> Dict[str, Any]:
+    """Estado do provedor sem tocar em material de credencial.
+
+    Só devolve modo, situação e uma descrição legível — nunca a chave, nem
+    parte dela. Usado pelo readiness do Brain e pelo onboarding.
+    """
+    try:
+        credential = get_company_ai_provider_credential(db, company_id)
+    except Exception as exc:  # pragma: no cover - degradação
+        logger.warning(
+            "Falha ao consultar credencial de IA: company_id=%s error_type=%s",
+            company_id,
+            exc.__class__.__name__,
         )
-    return decrypt_openai_api_key(credential.api_key_encrypted)
+        credential = None
+
+    if credential is not None and credential.status == "valid":
+        return {
+            "mode": AI_PROVIDER_MODE_BYOK,
+            "operational": True,
+            "description": "Credencial própria configurada e validada",
+        }
+
+    if credential is not None:
+        return {
+            "mode": AI_PROVIDER_MODE_BYOK,
+            "operational": False,
+            "description": "Credencial própria cadastrada, mas não validada",
+        }
+
+    if platform_managed_openai_api_key():
+        return {
+            "mode": AI_PROVIDER_MODE_MANAGED,
+            "operational": True,
+            "description": "Usando a infraestrutura de IA da BrainfyOS (consumo medido por empresa)",
+        }
+
+    return {
+        "mode": None,
+        "operational": False,
+        "description": "Nenhum provedor de IA disponível",
+    }
+
+
+def get_company_openai_api_key(db: Session, company_id: int) -> str:
+    """Resolve one credential for this run without global process state."""
+
+    return resolve_company_openai_credential(db, company_id).api_key
 
 
 def build_company_openai_run_config(

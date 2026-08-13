@@ -85,8 +85,49 @@ def _has_whatsapp(db: Session, company_id: int) -> bool:
 
 
 def _has_ai_provider(db: Session, company_id: int) -> bool:
+    """Provedor operacional -- credencial propria **ou** modo managed.
+
+    Exigir ``ai_provider_credentials`` bloqueava o onboarding de uma empresa
+    que ja podia operar com a infraestrutura da plataforma. A etapa mede se a
+    IA funciona, nao se ha uma linha numa tabela.
+    """
+    # Import tardio: o modulo do provedor carrega o SDK da OpenAI.
+    from backend.services.ai_provider_service import describe_company_ai_provider_mode
+
+    return bool(describe_company_ai_provider_mode(db, company_id)["operational"])
+
+
+def _has_brain_strategy(db: Session, company_id: int) -> bool:
     row = db.execute(
-        text("SELECT 1 FROM ai_provider_credentials WHERE company_id = :company_id LIMIT 1"),
+        text(
+            """
+            SELECT 1 FROM brain_business_profiles
+            WHERE company_id = :company_id
+              AND COALESCE(NULLIF(TRIM(business_model), ''), NULL) IS NOT NULL
+              AND COALESCE(NULLIF(TRIM(positioning), ''), NULL) IS NOT NULL
+              AND COALESCE(NULLIF(TRIM(value_proposition), ''), NULL) IS NOT NULL
+            LIMIT 1
+            """
+        ),
+        {"company_id": company_id},
+    ).first()
+    return row is not None
+
+
+def _has_brain_icp(db: Session, company_id: int) -> bool:
+    row = db.execute(
+        text("SELECT 1 FROM brain_icp_profiles WHERE company_id = :company_id AND is_active LIMIT 1"),
+        {"company_id": company_id},
+    ).first()
+    return row is not None
+
+
+def _has_brain_offer(db: Session, company_id: int) -> bool:
+    row = db.execute(
+        text(
+            "SELECT 1 FROM brain_offers "
+            "WHERE company_id = :company_id AND is_active AND is_primary LIMIT 1"
+        ),
         {"company_id": company_id},
     ).first()
     return row is not None
@@ -125,12 +166,19 @@ def _has_pipeline_stages(db: Session, company_id: int) -> bool:
 
 
 # Item key -> verificador. Um item ausente daqui e puramente manual.
+#
+# As etapas de estrategia leem as tabelas do Brain, nao ``onboarding_answers``.
+# E o que impede duas verdades: o dado tem uma casa so, e o onboarding apenas
+# observa se ela esta preenchida.
 AUTO_RESOLVERS: Dict[str, Callable[[Session, int], bool]] = {
     "company_profile": _has_company_profile,
     "whatsapp_connect": _has_whatsapp,
     "ai_provider": _has_ai_provider,
     "first_agent": _has_agent,
     "pipeline_setup": _has_pipeline_stages,
+    "brain_strategy": _has_brain_strategy,
+    "brain_icp": _has_brain_icp,
+    "brain_offer": _has_brain_offer,
 }
 
 
@@ -346,9 +394,22 @@ def save_answers(
 ) -> Dict[str, Any]:
     """Grava respostas chave/valor do onboarding.
 
+    Chaves que tem casa no Brain nao ficam aqui: elas sao gravadas na tabela
+    canonica e a resposta e descartada. E o que impede o onboarding e a
+    BrainPage divergirem sobre o mesmo campo.
+
     O valor e sempre embrulhado em ``{"value": ...}`` para que a coluna JSONB
     aceite escalares sem depender do modo de serializacao do driver.
     """
+    # Import tardio: brain importa modelos que importam este modulo.
+    from backend.services.brain.onboarding_bridge import (
+        BRAIN_OWNED_ANSWER_KEYS,
+        materialize_answers_into_brain,
+    )
+
+    brain_owned = {key: value for key, value in answers.items() if key in BRAIN_OWNED_ANSWER_KEYS}
+    answers = {key: value for key, value in answers.items() if key not in BRAIN_OWNED_ANSWER_KEYS}
+
     item_id: Optional[int] = None
     if item_key:
         item = (
@@ -384,7 +445,38 @@ def save_answers(
             if item_id is not None:
                 existing.item_id = item_id
 
+    # As chaves do Brain sao gravadas como resposta e imediatamente movidas
+    # para a tabela canonica. Passar pela tabela de respostas mantem um unico
+    # caminho de escrita e deixa a materializacao idempotente.
+    if brain_owned:
+        for field_key, value in brain_owned.items():
+            normalized_key = str(field_key)[:120]
+            existing = (
+                db.query(OnboardingAnswer)
+                .filter(
+                    OnboardingAnswer.company_id == company_id,
+                    OnboardingAnswer.field_key == normalized_key,
+                )
+                .first()
+            )
+            if existing is None:
+                db.add(
+                    OnboardingAnswer(
+                        company_id=company_id,
+                        item_id=item_id,
+                        field_key=normalized_key,
+                        value={"value": value},
+                    )
+                )
+            else:
+                existing.value = {"value": value}
+        db.flush()
+
     db.commit()
+
+    if brain_owned:
+        materialize_answers_into_brain(db, company_id)
+
     return get_answers(db, company_id)
 
 

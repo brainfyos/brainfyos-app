@@ -38,6 +38,10 @@ import IntegrationsHub from './pages/IntegrationsHub.tsx';
 import TelegramIntegration from './pages/TelegramIntegration.tsx';
 import GettingStarted from './pages/GettingStarted.tsx';
 
+// Brain Core — sob demanda: a página carrega os tokens do visual enterprise e
+// recharts, e nem toda sessão passa por ela.
+const BrainPage = React.lazy(() => import('./pages/brain/BrainPage.tsx'));
+
 // BrainfyOS Control — ambiente do proprietário da plataforma. Carregado sob
 // demanda: nenhum cliente baixa esse código, já que quase ninguém o acessa.
 const PlatformOwnerRoute = React.lazy(() => import('./components/control/PlatformOwnerRoute.tsx'));
@@ -100,6 +104,9 @@ const App: React.FC = () => {
                   <Route path="/getting-started" element={<Navigate to="/getting_started" replace />} />
                   <Route path="/dashboard/ads" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard/metrics" element={<Navigate to="/dashboard" replace />} />
+
+                  {/* Inteligência */}
+                  <Route path="/brain" element={<BrainPage />} />
 
                   {/* CRM e Contatos */}
                   <Route path="/crm" element={<CRMv4 />} />
