@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="88" viewBox="0 0 320 88" role="img" aria-labelledby="title">
+  <title id="title">BrainfyOS</title>
+  <defs>
+    <linearGradient id="bfyLightBg" x1="18" y1="18" x2="70" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1b1e4b"/>
+      <stop offset="1" stop-color="#020323"/>
+    </linearGradient>
+    <linearGradient id="bfyLightNode" x1="18" y1="18" x2="70" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c8cff"/>
+      <stop offset="1" stop-color="#2ee6d6"/>
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="52" height="52" rx="13" fill="url(#bfyLightBg)"/>
+  <g transform="translate(18 18) scale(0.5417)">
+    <g stroke="url(#bfyLightNode)" stroke-width="4" stroke-linecap="round" stroke-opacity=".55" fill="none">
+      <path d="M32 32 L48 48 M64 26 L48 48 M48 48 L28 64 M48 48 L66 62 M32 32 L64 26 M28 64 L66 62"/>
+    </g>
+    <g fill="url(#bfyLightNode)">
+      <circle cx="48" cy="48" r="7.5"/>
+      <circle cx="32" cy="32" r="5"/>
+      <circle cx="64" cy="26" r="5"/>
+      <circle cx="28" cy="64" r="5"/>
+      <circle cx="66" cy="62" r="5"/>
+    </g>
+  </g>
+  <text x="86" y="53" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="27" font-weight="700" letter-spacing="-0.4" fill="#020323">Brainfy<tspan fill="#4f5bd5">OS</tspan></text>
+</svg>
