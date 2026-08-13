@@ -27,7 +27,7 @@ from decimal import Decimal
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from backend.models import (
     Agendamento,
@@ -190,7 +190,14 @@ class BrainContextService:
     # ------------------------------------------------------------------
 
     def _build_business(self, company_id: int) -> BusinessContext:
-        company = self._db.query(Company).filter(Company.id == company_id).first()
+        # joinedload no business_type: sem ele, ler ``company.business_type``
+        # abaixo dispara uma segunda consulta a cada montagem de contexto.
+        company = (
+            self._db.query(Company)
+            .options(joinedload(Company.business_type))
+            .filter(Company.id == company_id)
+            .first()
+        )
         if company is None:
             return BusinessContext(
                 available=False,

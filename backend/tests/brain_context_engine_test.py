@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.models import (
     Base,
+    BusinessType,
     BrainBusinessProfile,
     BrainGoal,
     BrainIcpProfile,
@@ -33,6 +34,7 @@ from backend.services.brain.schemas import BrainScope, SourceType
 COMPANY = 7
 
 TABLES = [
+    BusinessType.__table__,
     Company.__table__,
     Contact.__table__,
     Lead.__table__,

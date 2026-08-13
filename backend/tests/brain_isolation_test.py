@@ -21,6 +21,7 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.models import (
     Base,
+    BusinessType,
     BrainBusinessProfile,
     BrainGoal,
     BrainIcpProfile,
@@ -41,6 +42,7 @@ COMPANY_A = 101
 COMPANY_B = 202
 
 BRAIN_TABLES = [
+    BusinessType.__table__,
     Company.__table__,
     Contact.__table__,
     Lead.__table__,
