@@ -173,7 +173,7 @@ def check_contact_matches_criteria(db: Session, contact_id: int, company_id: int
             text("""
                 SELECT c.phone, c.name, p.status, p.categoria, p.tags
                 FROM contacts c
-                LEFT JOIN clientes p ON p.contact_id = c.id AND p.company_id = c.company_id
+                LEFT JOIN customers p ON p.contact_id = c.id AND p.company_id = c.company_id
                 WHERE c.id = :contact_id AND c.company_id = :company_id
             """),
             {"contact_id": contact_id, "company_id": company_id}
@@ -755,7 +755,7 @@ def iniciar_nutrition_campaign_para_contatos(
             contact_query = """
                 SELECT DISTINCT c.id, c.phone, c.name
                 FROM contacts c
-                LEFT JOIN clientes p ON p.contact_id = c.id AND p.company_id = c.company_id
+                LEFT JOIN customers p ON p.contact_id = c.id AND p.company_id = c.company_id
                 WHERE c.company_id = :company_id
                   AND c.phone IS NOT NULL
                   AND c.phone != ''

@@ -947,15 +947,15 @@ async def create_contact(
         if isinstance(user, Client):
             client_id = user.id
         else:
-            # Se for User, buscar o client_id da empresa
+            # companies nao tem client_id; o vinculo vive em clients.company_id.
             company_data = db.execute(text("""
-                SELECT client_id FROM companies WHERE id = :company_id
+                SELECT id FROM clients WHERE company_id = :company_id ORDER BY id LIMIT 1
             """), {"company_id": request_data.company_id}).fetchone()
 
             if not company_data:
                 raise HTTPException(status_code=400, detail="Empresa não encontrada")
 
-            client_id = company_data.client_id
+            client_id = company_data.id
 
         # Criar contato
         new_contact = Contact(
