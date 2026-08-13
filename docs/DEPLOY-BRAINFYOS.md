@@ -44,7 +44,7 @@ O diretório `/etc/brainfyos` é `root:brainfyos 750` — o grupo precisa de per
 - Banco: `brainfyos`
 - Role: `brainfyos_app` (owner)
 - Conexão: `127.0.0.1:5432`, senha via `PGPASSWORD` (a `DATABASE_URL` não carrega credencial)
-- Migrations: `alembic` na versão `0001` (93 tabelas)
+- Migrations: `alembic` na versão `0005`
 
 ## Serviços systemd
 
@@ -94,9 +94,38 @@ O `close` para requisições sem `Upgrade` mantém o tráfego HTTP normal inalte
 
 Para testar o handshake é preciso um cliente WebSocket real — `curl` não completa o handshake e devolve `404` mesmo quando a configuração está correta. Com sessão autenticada, a resposta esperada é `101` seguida de `{"type":"connection_established"}`.
 
-## Firewall
+## Firewall e acesso SSH
 
 `ufw` ativo, liberando apenas 22, 80 e 443. PostgreSQL e Redis escutam somente em `127.0.0.1`.
+
+Login por chave está instalado (`~/.ssh/brainfy_hostinger_ed25519` na estação, `authorized_keys` no servidor). Use a chave: repetidas autenticações por senha disparam o anti-brute-force da Hostinger, que bloqueia a porta 22 para o IP de origem por alguns minutos — 80 e 443 continuam respondendo, o que torna o sintoma confuso.
+
+O login por senha do root **ainda está habilitado**. Desligá-lo (`PermitRootLogin prohibit-password`) elimina a causa do bloqueio, mas só depois de confirmar que a chave funciona de todas as máquinas que precisam acessar.
+
+## BrainfyOS Control
+
+O acesso ao ambiente do proprietário depende de `clients.platform_role = 'platform_owner'`, gravado no banco — não da variável `ADMIN_EMAILS`, que serve apenas a provisionamento de empresas.
+
+```bash
+cd /srv/brainfyos/app
+sudo -u brainfyos /usr/local/bin/brainfyos-run .venv/bin/python \
+  -m backend.scripts.grant_platform_owner --list
+sudo -u brainfyos /usr/local/bin/brainfyos-run .venv/bin/python \
+  -m backend.scripts.grant_platform_owner --email <email>
+sudo -u brainfyos /usr/local/bin/brainfyos-run .venv/bin/python \
+  -m backend.scripts.grant_platform_owner --email <email> --revoke
+```
+
+Só contas master (`clients`) recebem o papel; sub-usuários (`users`) são escopados a uma empresa por construção. Toda leitura administrativa fica em `platform_audit_log`.
+
+## Onboarding
+
+O roteiro de onboarding é conteúdo, não schema. Depois de cada `alembic upgrade head` que traga mudanças nele, rode o seed idempotente:
+
+```bash
+sudo -u brainfyos /usr/local/bin/brainfyos-run .venv/bin/python \
+  -m backend.scripts.seed_onboarding_template
+```
 
 ## Health checks
 
