@@ -18,7 +18,13 @@ projeto com ``with_variant`` — um refactor amplo em modelos que não deveria
 acontecer para resolver um problema que só existe no ambiente de teste.
 """
 
+import os
 import re
+
+# `backend.db` exige DATABASE_URL no import. O conftest é carregado antes de
+# qualquer módulo de teste, então o valor precisa existir aqui — os módulos
+# usam `setdefault` e respeitam este.
+os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/brainfyos-tests.db")
 
 from sqlalchemy import text as sa_text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -26,6 +32,10 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.elements import TextClause
 
 from backend.db import Base
+
+# Importar o pacote de modelos registra todas as tabelas no metadata. Sem
+# isso a varredura abaixo percorreria um metadata vazio e não corrigiria nada.
+import backend.models  # noqa: F401
 
 # Casa com o cast de tipo do PostgreSQL no fim de um literal: '[]'::jsonb
 POSTGRES_CAST = re.compile(r"::\s*[a-zA-Z_][a-zA-Z0-9_]*")
