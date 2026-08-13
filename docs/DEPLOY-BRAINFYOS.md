@@ -44,7 +44,7 @@ O diretório `/etc/brainfyos` é `root:brainfyos 750` — o grupo precisa de per
 - Banco: `brainfyos`
 - Role: `brainfyos_app` (owner)
 - Conexão: `127.0.0.1:5432`, senha via `PGPASSWORD` (a `DATABASE_URL` não carrega credencial)
-- Migrations: `alembic` na versão `0005`
+- Migrations: `alembic` na versão `0006`
 
 ## Serviços systemd
 
@@ -221,6 +221,21 @@ O domínio é proxiado pela Cloudflare, então o certificado que o visitante vê
 - A renovação do Let's Encrypt usa HTTP-01 através da Cloudflare. Se falhar, migre para validação DNS-01 com a API da Cloudflare.
 - O IP real do cliente chega em `X-Forwarded-For`; `TRUST_PROXY_HEADERS=true` já está ligado.
 
+## Provedor de IA: managed e BYOK
+
+Duas formas de uma empresa executar agentes:
+
+| Modo | Origem da chave | Quando vale |
+|---|---|---|
+| `byok` | `ai_provider_credentials` da própria empresa | A empresa quer consumo e faturamento no provedor dela |
+| `managed` | `OPENAI_API_KEY` da plataforma | Padrão. A empresa opera desde o primeiro dia; o consumo é medido por empresa em `ai_usage_events` |
+
+A escolha acontece num único lugar — `resolve_company_openai_credential()` em `services/ai_provider_service.py`. Credencial própria sempre vence. Uma credencial própria **inválida** não cai para managed: a empresa declarou a intenção de usar a chave dela, e trocá-la em silêncio cobraria consumo de quem não pediu isso.
+
+`AI_PROVIDER_ALLOW_MANAGED=false` desliga o modo managed e volta ao BYOK estrito, sem redeploy.
+
+O contrato de segurança anterior segue valendo: **nenhum ponto do código lê `OPENAI_API_KEY` diretamente**. Todo consumidor passa pelo resolvedor.
+
 ## Pendências de configuração
 
 | Variável | Impacto enquanto vazia |
@@ -231,6 +246,46 @@ Depois de editar o arquivo: `systemctl restart brainfyos-api brainfyos-worker br
 
 Use `/usr/local/bin/brainfyos-setenv CHAVE=valor` para alterar variáveis sem editar o arquivo à mão — ele preserva permissões e é idempotente.
 
-## Backup recomendado
+## Backup
 
-Ainda não configurado. O mínimo seria um dump diário do PostgreSQL mais cópia de `/srv/brainfyos/shared` e `/etc/brainfyos/backend.env` para fora do servidor.
+**Estado atual: não há rotina automática.** Os dumps existentes (`/root/brainfyos-pre-*.sql.gz`) foram feitos manualmente antes de cada migration. Isso protege contra uma migration ruim e contra mais nada — não cobre exclusão acidental, corrupção, nem perda do servidor.
+
+### Por que dump manual não serve como estratégia
+
+Um backup só existe de verdade quando satisfaz três condições, e o dump manual falha nas três: é **periódico** (o manual depende de alguém lembrar), é **externo** (um dump em `/root` morre junto com a VPS) e é **restaurável** (um backup nunca testado é uma hipótese, não uma garantia).
+
+### Rotina mínima recomendada
+
+Dump diário com retenção, rodando como serviço systemd para o log ficar no journal:
+
+```bash
+cat > /usr/local/bin/brainfyos-backup <<'SH'
+#!/bin/bash
+set -euo pipefail
+DEST=/var/backups/brainfyos
+RETENTION_DAYS=14
+mkdir -p "$DEST"
+STAMP=$(date +%Y%m%d-%H%M)
+
+PGPASSWORD=$(cat /etc/brainfyos/.dbpass) pg_dump -h 127.0.0.1 -U brainfyos_app \
+  --format=custom brainfyos > "$DEST/db-$STAMP.dump"
+
+tar czf "$DEST/shared-$STAMP.tar.gz" -C /srv/brainfyos shared
+install -m 600 /etc/brainfyos/backend.env "$DEST/backend.env-$STAMP"
+
+find "$DEST" -type f -mtime +$RETENTION_DAYS -delete
+SH
+chmod 700 /usr/local/bin/brainfyos-backup
+```
+
+Unidades systemd (`brainfyos-backup.service` + `.timer` com `OnCalendar=daily` e `Persistent=true`, para o backup rodar depois de um boot que atravessou o horário).
+
+`--format=custom` em vez de SQL puro: permite restauração seletiva de uma tabela com `pg_restore -t`, o que importa muito no dia em que só uma tabela foi corrompida.
+
+### O que ainda falta decidir
+
+**Destino externo.** Sem cópia fora da VPS, perder o servidor perde os backups junto. Opções: bucket S3-compatível (Backblaze B2, Cloudflare R2), `rsync` para outra máquina, ou o snapshot da própria Hostinger — que cobre o disco inteiro mas tem granularidade pior que um dump.
+
+**Teste de restauração.** Restaurar em banco descartável ao menos uma vez por trimestre. Um backup nunca restaurado não é backup.
+
+**Retenção de `backend.env`.** O arquivo contém segredos; a cópia precisa do mesmo cuidado do original (modo 600, destino cifrado).
