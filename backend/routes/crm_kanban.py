@@ -250,66 +250,6 @@ async def create_pipeline(
     db: Session = Depends(get_db),
     current_user: Union[User, Client] = Depends(get_current_user)
 ):
-
-    if not company_id:
-        raise HTTPException(status_code=400, detail="Company_id não fornecido")
-
-    # Verificar permissão (se company_id diferente do usuário)
-    if current_user.company_id != company_id:
-        logger.warning(
-            "CRM pipeline permission mismatch: user_company_id=%s requested_company_id=%s",
-            current_user.company_id,
-            company_id,
-        )
-        # TODO: Implementar verificação de permissão admin
-        pass
-
-    from backend.models import Pipeline
-
-    pipelines = db.query(Pipeline).filter(
-        Pipeline.company_id == company_id
-    ).all()
-
-    result = []
-    for pipeline in pipelines:
-        stages_data = []
-        for stage in sorted(pipeline.stages, key=lambda x: x.order):
-            stages_data.append(PipelineStageResponse(
-                id=stage.id,
-                pipeline_id=stage.pipeline_id,
-                name=stage.name,
-                description=stage.description,
-                color=stage.color,
-                order=stage.order,
-                is_first_stage=stage.is_first_stage,
-                is_converted_stage=stage.is_converted_stage,
-                is_lost_stage=stage.is_lost_stage,
-                auto_advance_days=stage.auto_advance_days,
-                follow_up_sequence_id=stage.follow_up_sequence_id,
-                percentage_base_stage_id=stage.percentage_base_stage_id
-            ))
-
-        result.append(PipelineResponse(
-            id=pipeline.id,
-            company_id=pipeline.company_id,
-            name=pipeline.name,
-            description=pipeline.description,
-            is_active=pipeline.is_active,
-            created_by_user_id=pipeline.created_by_user_id,
-            created_at=pipeline.created_at.isoformat() if pipeline.created_at else "",
-            updated_at=pipeline.updated_at.isoformat() if pipeline.updated_at else "",
-            stages=stages_data
-        ))
-
-    return result
-
-@router.post("/pipelines", response_model=PipelineResponse)
-async def create_pipeline(
-    pipeline_data: PipelineCreate,
-    company_id: int,
-    db: Session = Depends(get_db),
-    current_user: Union[User, Client] = Depends(get_current_user)
-):
     """Criar novo pipeline para a empresa"""
 
     # Validar permissão

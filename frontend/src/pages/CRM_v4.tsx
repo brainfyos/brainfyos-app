@@ -830,18 +830,10 @@ export default function CRMv4() {
         throw new Error('IDs de cliente ou empresa não encontrados');
       }
 
-      // Primeiro, buscar ou criar um pipeline para esta empresa
-      let pipelineId = 1; // Default
-      try {
-        const pipelines = await pipelineApi.getPipelines();
-        if (pipelines && pipelines.length > 0) {
-          pipelineId = pipelines[0].id;
-        } else {
-          console.warn('Nenhum pipeline encontrado, usando ID padrão');
-        }
-      } catch (e) {
-        console.warn('Falha ao carregar pipelines, usando ID padrão', e);
-      }
+      // Busca o pipeline da empresa e cria um caso ainda nao exista. Sem isso,
+      // a criacao de etapa falharia com violacao de chave estrangeira.
+      const pipeline = await pipelineApi.ensurePipeline();
+      const pipelineId = pipeline.id;
 
       // Criar nova etapa no backend
       const newStage = await pipelineApi.createStage(pipelineId, {
@@ -1611,6 +1603,64 @@ export default function CRMv4() {
   const editStageBaseOptions = getPercentageBaseOptions(editingStageColumn);
   const mutedTextClass = 'crm-modern-muted';
   const softSurfaceClass = 'crm-modern-subtle';
+
+  const addStageCard = (
+    <div className="crm-pipeline-add-stage flex w-[calc(100vw-3.5rem)] max-w-72 shrink-0 flex-col sm:w-[288px] sm:max-w-none">
+      <div className="crm-add-stage">
+        <div className="crm-add-stage__header">
+          <div>
+            <p className="crm-add-stage__eyebrow">Pipeline</p>
+            <h3>Nova etapa</h3>
+          </div>
+          <span className="crm-add-stage__icon" aria-hidden="true"><Plus className="h-4 w-4" /></span>
+        </div>
+        <p className={cx('crm-add-stage__description', mutedTextClass)}>Insira antes das etapas finais.</p>
+        <input
+          type="text"
+          value={newColumnName}
+          onChange={(event) => setNewColumnName(event.target.value)}
+          placeholder="Nome da etapa"
+          className={crmModernInputClass(isDark)}
+          onKeyDown={(event) => event.key === 'Enter' && addColumn()}
+          autoFocus
+        />
+        <div className="crm-add-stage__grid">
+          <label>
+            <span className={crmModernLabelClass(isDark)}>Cor</span>
+            <span className={cx('crm-add-stage__color-control', softSurfaceClass)}>
+              <input
+                type="color"
+                value={newColumnColor}
+                onChange={(event) => setNewColumnColor(event.target.value)}
+                aria-label="Escolher cor da nova etapa"
+              />
+              <i style={{ backgroundColor: newColumnColor }} />
+              <b>{newColumnColor}</b>
+            </span>
+          </label>
+          <label>
+            <span className={crmModernLabelClass(isDark)}>% sobre</span>
+            <select
+              value={newColumnPercentageBaseStageId}
+              onChange={(event) => setNewColumnPercentageBaseStageId(event.target.value)}
+              className={crmModernInputClass(isDark)}
+            >
+              <option value="">Leads</option>
+              {getPercentageBaseOptions().map(option => (
+                <option key={option.id} value={option.stageId}>
+                  {option.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <button type="button" onClick={addColumn} disabled={!newColumnName.trim()} className={crmModernPrimaryButtonClass('w-full')}>
+          <Plus className="h-4 w-4" />
+          Adicionar etapa
+        </button>
+      </div>
+    </div>
+  );
   return (
     <div className={cx(
       'crm-workspace flex h-[100dvh] min-h-0 flex-col overflow-hidden sm:h-screen',
@@ -1861,63 +1911,7 @@ export default function CRMv4() {
 
               return (
                 <React.Fragment key={column.id}>
-                  {showAddStageBefore && (
-                    <div className="crm-pipeline-add-stage flex w-[calc(100vw-3.5rem)] max-w-72 shrink-0 flex-col sm:w-[288px] sm:max-w-none">
-                      <div className="crm-add-stage">
-                        <div className="crm-add-stage__header">
-                          <div>
-                            <p className="crm-add-stage__eyebrow">Pipeline</p>
-                            <h3>Nova etapa</h3>
-                          </div>
-                          <span className="crm-add-stage__icon" aria-hidden="true"><Plus className="h-4 w-4" /></span>
-                        </div>
-                        <p className={cx('crm-add-stage__description', mutedTextClass)}>Insira antes das etapas finais.</p>
-                        <input
-                          type="text"
-                          value={newColumnName}
-                          onChange={(event) => setNewColumnName(event.target.value)}
-                          placeholder="Nome da etapa"
-                          className={crmModernInputClass(isDark)}
-                          onKeyDown={(event) => event.key === 'Enter' && addColumn()}
-                          autoFocus
-                        />
-                        <div className="crm-add-stage__grid">
-                          <label>
-                            <span className={crmModernLabelClass(isDark)}>Cor</span>
-                            <span className={cx('crm-add-stage__color-control', softSurfaceClass)}>
-                              <input
-                                type="color"
-                                value={newColumnColor}
-                                onChange={(event) => setNewColumnColor(event.target.value)}
-                                aria-label="Escolher cor da nova etapa"
-                              />
-                              <i style={{ backgroundColor: newColumnColor }} />
-                              <b>{newColumnColor}</b>
-                            </span>
-                          </label>
-                          <label>
-                            <span className={crmModernLabelClass(isDark)}>% sobre</span>
-                            <select
-                              value={newColumnPercentageBaseStageId}
-                              onChange={(event) => setNewColumnPercentageBaseStageId(event.target.value)}
-                              className={crmModernInputClass(isDark)}
-                            >
-                              <option value="">Leads</option>
-                              {getPercentageBaseOptions().map(option => (
-                                <option key={option.id} value={option.stageId}>
-                                  {option.title}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
-                        <button type="button" onClick={addColumn} disabled={!newColumnName.trim()} className={crmModernPrimaryButtonClass('w-full')}>
-                          <Plus className="h-4 w-4" />
-                          Adicionar etapa
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {showAddStageBefore && addStageCard}
                   <div
                     className={cx(
                       'crm-kanban-column',
@@ -2048,6 +2042,7 @@ export default function CRMv4() {
               );
             })
             }
+            {isEditingPipeline && firstTerminalIndex < 0 && addStageCard}
           </div>
           </DragDropContext>
         </div>

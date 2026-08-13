@@ -375,6 +375,34 @@ export const pipelineApi = {
     }
   },
 
+  // Criar pipeline para a empresa autenticada. O backend ja cria a etapa
+  // inicial obrigatoria ("Novo Lead").
+  async createPipeline(name = 'Pipeline principal', description?: string): Promise<Pipeline> {
+    try {
+      const { companyId } = getAuthIds();
+
+      if (!companyId) {
+        throw new Error('Informações de autenticação não encontradas para pipelines');
+      }
+
+      const response = await api.post(
+        `/api/pipelines?company_id=${companyId}`,
+        { name, description, is_active: true, stages: [] }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao criar pipeline:', error);
+      throw error;
+    }
+  },
+
+  // Retorna o pipeline da empresa, criando um caso ainda nao exista.
+  async ensurePipeline(): Promise<Pipeline> {
+    const pipelines = await this.getPipelines();
+    if (pipelines && pipelines.length > 0) return pipelines[0];
+    return this.createPipeline();
+  },
+
   // Criar novo estágio
   async createStage(pipelineId: number, stageData: Partial<PipelineStage>): Promise<PipelineStage> {
     try {

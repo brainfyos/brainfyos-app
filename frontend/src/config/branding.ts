@@ -12,10 +12,12 @@ export const branding = Object.freeze({
   supportName: cleanText(import.meta.env.VITE_SUPPORT_NAME, 'Equipe de suporte'),
   supportEmail: cleanText(import.meta.env.VITE_SUPPORT_EMAIL, 'suporte@brainfyos.com.br'),
   assets: Object.freeze({
+    // logo-light: marca oficial + wordmark escuro, para fundos claros.
+    // logo-completo: arquivo oficial, wordmark branco, so legivel em fundo escuro.
     logoLight: '/branding/logo-light.svg',
-    logoDark: '/branding/logo-dark.svg',
-    icon: '/branding/icon.svg',
-    iconWhite: '/branding/icon-white.svg',
+    logoDark: '/branding/logo-completo.png',
+    icon: '/branding/icon-512.png',
+    iconWhite: '/branding/icon-512.png',
   }),
 });
 
