@@ -21,7 +21,11 @@ COMPANY_KEY = "sk-company-own-key"
 
 
 class _FakeDB:
-    """Sessao minima: o resolvedor so precisa de query().filter_by().first()."""
+    """Sessao minima.
+
+    ``get_company_ai_provider_credential`` encerra com ``one_or_none()``; os
+    demais metodos existem para a cadeia de chamadas nao quebrar.
+    """
 
     def __init__(self, credential=None):
         self._credential = credential
@@ -34,6 +38,9 @@ class _FakeDB:
 
     def filter(self, *_args, **_kwargs):
         return self
+
+    def one_or_none(self):
+        return self._credential
 
     def first(self):
         return self._credential
