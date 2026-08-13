@@ -97,6 +97,9 @@ class Client(Base):
     billing_profile = Column(JSONB, nullable=False, server_default="{}")
     is_active = Column(Boolean, nullable=False, server_default='true')
     auth_token_version = Column(Integer, nullable=False, server_default="0")
+    # Papel acima de company. NULL para toda conta de workspace; hoje o unico
+    # valor possivel e 'platform_owner', que libera o BrainfyOS Control.
+    platform_role = Column(String(30), nullable=True)
 
     # Relacionamentos permanecem os mesmos
     messages = relationship("Message", back_populates="client")

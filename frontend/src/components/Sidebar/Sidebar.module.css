@@ -383,6 +383,30 @@
   padding: 0 12px;
 }
 
+/*
+  Atalho para o BrainfyOS Control. Fica no rodapé e visualmente à parte do
+  menu do workspace: é uma saída para outro ambiente, não mais um item da
+  navegação da empresa.
+*/
+.controlLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  transition: border-color var(--transition-base), color var(--transition-base), background-color var(--transition-base);
+}
+
+.controlLink:hover {
+  background-color: var(--hover-bg);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
 .footerSection {
   display: flex;
   flex-direction: column;

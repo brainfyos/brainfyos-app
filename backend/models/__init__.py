@@ -46,6 +46,16 @@ from backend.models.ai_credit_models import (
 
 from backend.models.ai_provider_models import AIProviderCredential
 
+from backend.models.platform_models import PlatformAuditLog, PLATFORM_ROLE_OWNER
+
+from backend.models.onboarding_models import (
+    OnboardingTemplate,
+    OnboardingSection,
+    OnboardingItem,
+    OnboardingProgress,
+    OnboardingAnswer,
+)
+
 # Adicionar modelos de receita à lista de exports
 _all_exports.extend([
     'Plan',
@@ -58,6 +68,13 @@ _all_exports.extend([
     'AIUsageEvent',
     'AICreditTransaction',
     'AIProviderCredential',
+    'PlatformAuditLog',
+    'PLATFORM_ROLE_OWNER',
+    'OnboardingTemplate',
+    'OnboardingSection',
+    'OnboardingItem',
+    'OnboardingProgress',
+    'OnboardingAnswer',
 ])
 
 __all__ = _all_exports

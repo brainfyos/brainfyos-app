@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, Target, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, ShieldCheck, Target, type LucideIcon } from 'lucide-react';
 import NotificationTray from '../NotificationTray/NotificationTray';
 import WorkspaceAccountNav from '../WorkspaceAccountNav/WorkspaceAccountNav';
 import type { MenuItem, SubItem } from '../../services/permissionService';
@@ -131,6 +131,8 @@ interface SidebarProps {
     moduleKey: ModuleKey;
     hidden?: boolean;
   }[];
+  /** Exibe o atalho para o BrainfyOS Control (só para proprietários da plataforma). */
+  showControlLink?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -155,6 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   workspaceInitials,
   workspaceName,
   railItems,
+  showControlLink = false,
 }) => {
   const [expandedModules, setExpandedModules] = useState<Set<ModuleKey>>(
     () => new Set(railItems.map((item) => item.moduleKey)),
@@ -316,6 +319,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {!isCollapsed && <div className={styles.sidebarFooter}>
+        {showControlLink && (
+          <Link className={styles.controlLink} to="/control">
+            <ShieldCheck className={styles.navIcon} />
+            <span className={styles.navItemLabel}>BrainfyOS Control</span>
+          </Link>
+        )}
+
         <section className={styles.footerSection}>
           <ModuleSectionToggle
             label="Atividade"

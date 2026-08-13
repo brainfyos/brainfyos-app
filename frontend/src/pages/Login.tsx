@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { login } from '../services/api.ts';
+import { onboardingApi } from '../services/onboardingApi.ts';
 import { branding } from '../config/branding.ts';
 
 const inputClass = [
@@ -36,6 +37,24 @@ const Login = () => {
       localStorage.removeItem('auth_error_message');
     }
   }, []);
+
+  /**
+   * Primeiro acesso não cai no dashboard: um workspace vazio no meio de
+   * dezenas de funcionalidades não diz por onde começar. Enquanto as etapas
+   * obrigatórias do onboarding não estiverem concluídas, o destino é a tela
+   * Começar.
+   *
+   * Falha na consulta nunca bloqueia o login — o dashboard continua sendo o
+   * destino seguro.
+   */
+  async function resolveLandingRoute(): Promise<string> {
+    try {
+      const state = await onboardingApi.getState();
+      return state.is_complete ? '/dashboard' : '/getting_started';
+    } catch {
+      return '/dashboard';
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -85,7 +104,7 @@ const Login = () => {
         localStorage.setItem('master_client_id', clientId.toString());
       }
 
-      navigate('/dashboard');
+      navigate(await resolveLandingRoute());
     } catch (err: any) {
       console.error('Erro completo:', err);
       setError(err.message || 'Falha ao fazer login');

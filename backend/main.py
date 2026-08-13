@@ -423,6 +423,12 @@ app.include_router(agents_sdk_router)
 app.include_router(ai_credits_router, prefix="/api")
 app.include_router(ai_provider_router, prefix="/api")
 
+# BrainfyOS Control (plataforma) e onboarding do workspace.
+from backend.routes.control_routes import router as control_router
+from backend.routes.onboarding_routes import router as onboarding_router
+app.include_router(control_router, prefix="/api", tags=["Control"])
+app.include_router(onboarding_router, prefix="/api", tags=["Onboarding"])
+
 app.include_router(whatsapp_campaign_routes_router, tags=["WhatsApp Campaigns"])
 from backend.routes import calendar_routes
 app.include_router(calendar_routes.router, prefix="/api/calendar", tags=["Calendar"])
@@ -531,6 +537,10 @@ def _authenticate_login_request(
             "contact_permissions": permissions_payload["contact_permissions"],
             "business_type": business_type_code,
             "settings": settings,
+            # Somente contas master carregam papel de plataforma. O frontend usa
+            # isso apenas para exibir a entrada do Control -- a autorizacao real
+            # acontece em require_platform_owner, no backend.
+            "platform_role": getattr(account, "platform_role", None) if authenticated.user_type == "master" else None,
         }
         if authenticated.user_type == "user":
             payload["user_team"] = user_team

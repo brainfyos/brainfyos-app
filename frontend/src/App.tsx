@@ -36,6 +36,18 @@ import AccountProfile from './pages/AccountProfile.tsx';
 import CustomerManagement from './pages/CustomerManagement.tsx';
 import IntegrationsHub from './pages/IntegrationsHub.tsx';
 import TelegramIntegration from './pages/TelegramIntegration.tsx';
+import GettingStarted from './pages/GettingStarted.tsx';
+
+// BrainfyOS Control — ambiente do proprietário da plataforma. Carregado sob
+// demanda: nenhum cliente baixa esse código, já que quase ninguém o acessa.
+const PlatformOwnerRoute = React.lazy(() => import('./components/control/PlatformOwnerRoute.tsx'));
+const ControlLayout = React.lazy(() => import('./components/control/ControlLayout.tsx'));
+const ControlDashboardPage = React.lazy(() => import('./pages/control/ControlDashboardPage.tsx'));
+const ControlAccountsPage = React.lazy(() => import('./pages/control/ControlAccountsPage.tsx'));
+const ControlAccountDetailPage = React.lazy(() => import('./pages/control/ControlAccountDetailPage.tsx'));
+const ControlAIUsagePage = React.lazy(() => import('./pages/control/ControlAIUsagePage.tsx'));
+const ControlIntegrationsPage = React.lazy(() => import('./pages/control/ControlIntegrationsPage.tsx'));
+const ControlAlertsPage = React.lazy(() => import('./pages/control/ControlAlertsPage.tsx'));
 
 const AgendaIntegrationRedirect: React.FC = () => {
   const location = useLocation();
@@ -51,6 +63,10 @@ const App: React.FC = () => {
       <ThemeProvider>
         <Router>
           <div className="min-h-screen bg-surface-secondary">
+            {/* Fallback vazio de propósito: as rotas carregadas sob demanda são
+                só as do Control, e um spinner piscando durante o download do
+                chunk chama mais atenção do que a espera em si. */}
+            <React.Suspense fallback={null}>
             <Routes>
               {/* Rotas públicas */}
               <Route path="/" element={<Login />} />
@@ -62,10 +78,26 @@ const App: React.FC = () => {
                 <Route path="/new-company-admin" element={<NewCompanyAdminPage />} />
                 <Route path="/new-clinic-admin" element={<Navigate to="/new-company-admin" replace />} />
 
+                {/* BrainfyOS Control — layout próprio, fora do ProtectedLayout
+                    do workspace. A guarda consulta o backend; a autorização
+                    real está em require_platform_owner. */}
+                <Route element={<PlatformOwnerRoute />}>
+                  <Route path="/control" element={<ControlLayout />}>
+                    <Route index element={<ControlDashboardPage />} />
+                    <Route path="accounts" element={<ControlAccountsPage />} />
+                    <Route path="accounts/:companyId" element={<ControlAccountDetailPage />} />
+                    <Route path="ai" element={<ControlAIUsagePage />} />
+                    <Route path="integrations" element={<ControlIntegrationsPage />} />
+                    <Route path="alerts" element={<ControlAlertsPage />} />
+                  </Route>
+                </Route>
+
                 {/* Layout protegido */}
                 <Route element={<ProtectedLayout />}>
-                  {/* Dashboard principal */}
+                  {/* Início */}
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/getting_started" element={<GettingStarted />} />
+                  <Route path="/getting-started" element={<Navigate to="/getting_started" replace />} />
                   <Route path="/dashboard/ads" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard/metrics" element={<Navigate to="/dashboard" replace />} />
 
@@ -119,6 +151,7 @@ const App: React.FC = () => {
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </React.Suspense>
           </div>
         </Router>
       </ThemeProvider>

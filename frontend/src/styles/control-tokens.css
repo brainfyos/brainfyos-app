@@ -1,0 +1,89 @@
+/*
+  =========================================
+  BrainfyOS Control — design tokens
+  =========================================
+
+  O Control é um console de operação, não o workspace do cliente. Ele assume
+  um único visual escuro de propósito: é uma ferramenta interna usada por
+  longos períodos, e alternar tema aqui só criaria duas superfícies para
+  manter sem ganho nenhum para quem usa.
+
+  Todos os tokens ficam escopados em `.ctl-scope`, aplicado na raiz do
+  ControlLayout. Isso mantém o workspace intocado — nada aqui vaza para as
+  telas do cliente, e nenhuma cor é declarada solta dentro de componente.
+
+  Neutros com viés azul (não cinza puro): o fundo carrega um pouco do matiz do
+  acento, o que faz a paleta ler como escolhida em vez de herdada.
+*/
+
+.ctl-scope {
+  /* Fundos — do mais profundo ao mais elevado */
+  --ctl-bg: #080a0f;
+  --ctl-bg-sidebar: #0a0c12;
+  --ctl-surface: #0e1118;
+  --ctl-surface-raised: #141822;
+  --ctl-surface-hover: #171c27;
+
+  /* Bordas muito sutis: separam sem desenhar grade */
+  --ctl-border: rgba(255, 255, 255, 0.06);
+  --ctl-border-strong: rgba(255, 255, 255, 0.11);
+  --ctl-border-accent: rgba(59, 130, 246, 0.38);
+
+  /* Texto */
+  --ctl-text: #e7eaf2;
+  --ctl-text-secondary: #a2a9bd;
+  --ctl-text-muted: #6f778c;
+  --ctl-text-faint: #4d5468;
+
+  /* Azul é a cor principal — usada para foco, seleção e ação */
+  --ctl-accent: #3b82f6;
+  --ctl-accent-hover: #5b9bff;
+  --ctl-accent-soft: rgba(59, 130, 246, 0.13);
+  --ctl-accent-border: rgba(59, 130, 246, 0.32);
+
+  /* Semânticas: verde só para positivo, amarelo atenção, vermelho erro.
+     Separadas do acento de propósito — status nunca compete com navegação. */
+  --ctl-positive: #34d399;
+  --ctl-positive-soft: rgba(52, 211, 153, 0.12);
+  --ctl-warning: #fbbf24;
+  --ctl-warning-soft: rgba(251, 191, 36, 0.12);
+  --ctl-danger: #f87171;
+  --ctl-danger-soft: rgba(248, 113, 113, 0.12);
+  --ctl-neutral-soft: rgba(255, 255, 255, 0.06);
+
+  /* Tipografia — Lexend Deca para números e títulos, Inter para o resto.
+     Ambas já carregadas pelo index.css; nenhuma fonte nova entra no bundle. */
+  --ctl-font-display: 'Lexend Deca', 'Inter', system-ui, sans-serif;
+  --ctl-font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --ctl-font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --ctl-text-xs: 0.6875rem;   /* 11px — labels */
+  --ctl-text-sm: 0.8125rem;   /* 13px — corpo denso */
+  --ctl-text-base: 0.875rem;  /* 14px */
+  --ctl-text-lg: 1.0625rem;
+  --ctl-text-xl: 1.375rem;
+  --ctl-text-metric: 1.75rem;
+  --ctl-text-display: 2rem;
+
+  /* Espaçamento consistente */
+  --ctl-space-1: 0.25rem;
+  --ctl-space-2: 0.5rem;
+  --ctl-space-3: 0.75rem;
+  --ctl-space-4: 1rem;
+  --ctl-space-5: 1.5rem;
+  --ctl-space-6: 2rem;
+  --ctl-space-7: 2.5rem;
+
+  /* Cantos arredondados, sem exagero */
+  --ctl-radius-sm: 6px;
+  --ctl-radius: 10px;
+  --ctl-radius-lg: 14px;
+  --ctl-radius-pill: 999px;
+
+  --ctl-sidebar-width: 232px;
+  --ctl-topbar-height: 56px;
+
+  /* Sem gradiente chamativo: sombra só para elevar popover e cabeçalho fixo */
+  --ctl-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --ctl-transition: 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}

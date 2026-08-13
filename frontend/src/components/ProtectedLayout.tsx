@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Users,
   MessageSquare,
-  Settings,
   MessageCircle,
   ChevronLeft,
   ChevronRight,
@@ -23,12 +22,9 @@ import {
   LogOut,
   Apple,
   Target,
-  Brain,
   RefreshCw,
   Bot,
-  Briefcase,
   Layers,
-  Network,
   Database,
   BellRing,
   MoreVertical,
@@ -65,10 +61,14 @@ import {
 import { useUserPermissions } from '../hooks/useUserPermissions.ts';
 import { filterMenusByPermissions, type MenuItem, type SubItem } from '../services/permissionService.ts';
 import {
+  MODULE_ICON,
+  MODULE_META,
+  MODULE_ORDER,
   SIDEBAR_MODULE_MENUS,
   resolveActiveModule,
   type ModuleKey,
 } from '../config/sidebarNavigation.ts';
+import { controlApi } from '../services/controlApi.ts';
 import LogoutConfirmModal from './LogoutConfirmModal.tsx';
 import AllTasksModal from './AllTasksModal.tsx';
 import { unifiedWebSocketManager } from '../services/api.ts';
@@ -91,9 +91,15 @@ const ProtectedLayout: React.FC = () => {
   const [layoutError, setLayoutError] = useState<string | null>(null);
 
   // Navigation State
-  const [activeModule, setActiveModule] = useState<ModuleKey>('dashboard');
+  const [activeModule, setActiveModule] = useState<ModuleKey>('inicio');
+  // Só quem tem o papel de plataforma enxerga a entrada do Control. Isso é
+  // navegação, não autorização — o backend recusa /api/control/* de qualquer
+  // conta sem o papel, independentemente do que o React exiba.
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
-  const [openSubmenu, setOpenSubmenu] = useState<string | null>('group-operacional');
+  // Nenhum submenu aberto por padrão: o efeito abaixo abre o que contém a
+  // rota ativa assim que a navegação resolve.
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
   const [openNestedSubmenu, setOpenNestedSubmenu] = useState<string | null>(null);
 
   // Data State
@@ -133,8 +139,19 @@ const ProtectedLayout: React.FC = () => {
         console.error("Falha ao carregar lista de empresas", e);
       }
     };
+    const resolvePlatformRole = async () => {
+      try {
+        const session = await controlApi.getSession();
+        setIsPlatformOwner(session.is_platform_owner);
+      } catch {
+        // Conta sem papel, sessão expirada ou backend antigo: sem Control.
+        setIsPlatformOwner(false);
+      }
+    };
+
     refreshCurrentPermissions();
     loadCompanies();
+    resolvePlatformRole();
   }, []);
 
   useEffect(() => {
@@ -232,13 +249,16 @@ const ProtectedLayout: React.FC = () => {
     ? userCompanies.find((company) => company.company_id.toString() === companyId)
     : undefined;
   const isManagedCustomerWorkspace = Boolean(activeCompany?.managed_link_id || activeCompany?.managed_customer_id);
-  const navigationModule = isManagedCustomerWorkspace && activeModule === 'clientes' ? 'dashboard' : activeModule;
+  const navigationModule = activeModule;
   const sidebarModuleMenus = useMemo(() => (
-    (Object.keys(SIDEBAR_MODULE_MENUS) as ModuleKey[]).reduce((menus, moduleKey) => {
-      menus[moduleKey] = filterMenusByPermissions(SIDEBAR_MODULE_MENUS[moduleKey] || []);
+    MODULE_ORDER.reduce((menus, moduleKey) => {
+      const allowed = filterMenusByPermissions(SIDEBAR_MODULE_MENUS[moduleKey] || []);
+      menus[moduleKey] = isManagedCustomerWorkspace
+        ? allowed.filter((item) => !item.hiddenForManagedWorkspace)
+        : allowed;
       return menus;
     }, {} as Record<ModuleKey, MenuItem[]>)
-  ), [permissions]);
+  ), [permissions, isManagedCustomerWorkspace]);
   const currentMenuItems = sidebarModuleMenus[navigationModule] || [];
 
   const allMobileMenuItems = [
@@ -268,14 +288,15 @@ const ProtectedLayout: React.FC = () => {
     },
   ];
 
-  const railItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', moduleKey: 'dashboard' as ModuleKey },
-    { icon: Briefcase, label: 'Operacional', moduleKey: 'operacional' as ModuleKey },
-    { icon: Users, label: 'Clientes', moduleKey: 'clientes' as ModuleKey, hidden: isManagedCustomerWorkspace },
-    { icon: Brain, label: 'Inteligência', moduleKey: 'inteligencia' as ModuleKey },
-    { icon: Network, label: 'Conexões', moduleKey: 'conexoes' as ModuleKey },
-    { icon: Settings, label: 'Configurações', moduleKey: 'config' as ModuleKey },
-  ];
+  // Um grupo sem item visível não aparece. É assim que INTELIGÊNCIA (Brain,
+  // Resultados, Insights) fica escondido até existir a primeira página real —
+  // e é assim que ele volta sozinho quando ela existir.
+  const railItems = MODULE_ORDER.map((moduleKey) => ({
+    icon: MODULE_ICON[moduleKey],
+    label: MODULE_META[moduleKey].label,
+    moduleKey,
+    hidden: (sidebarModuleMenus[moduleKey] || []).length === 0,
+  }));
 
   const isMobilePathActive = (path: string) => {
     if (path === '/crm') {
@@ -354,6 +375,7 @@ const ProtectedLayout: React.FC = () => {
         workspaceInitials={workspaceInitials}
         workspaceName={workspaceName}
         railItems={railItems}
+        showControlLink={isPlatformOwner}
       />
 
         {/* 3. MAIN CONTENT AREA */}

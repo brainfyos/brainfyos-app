@@ -1,8 +1,26 @@
+/**
+ * Navegação do workspace BrainfyOS.
+ *
+ * A estrutura conceitual é INÍCIO / OPERAÇÃO / CRESCIMENTO / INTELIGÊNCIA /
+ * IA E AUTOMAÇÃO / GESTÃO. Nem todo grupo existe hoje: INTELIGÊNCIA (Brain,
+ * Resultados, Insights) não tem nenhuma página construída, então o grupo
+ * simplesmente não aparece — nada de tela falsa com dado inventado.
+ *
+ * Um grupo sem item visível é filtrado no ProtectedLayout, então adicionar o
+ * primeiro item real de INTELIGÊNCIA faz o grupo surgir sozinho.
+ *
+ * Nenhuma rota existente foi removida nesta reorganização; algumas apenas
+ * mudaram de grupo.
+ */
+
 import {
+  BarChart3,
+  Bot,
   Brain,
   Building2,
   Calendar,
   ClipboardCheck,
+  Compass,
   CreditCard,
   GitMerge,
   KeyRound,
@@ -12,16 +30,24 @@ import {
   Package,
   Plug,
   Receipt,
+  Rocket,
   Share2,
   Users,
   UserRound,
   Webhook,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react';
 import WhatsAppIcon from '../components/icons/WhatsAppIcon.tsx';
 import type { MenuItem, Permission, SubItem } from '../services/permissionService.ts';
 
-export type ModuleKey = 'dashboard' | 'operacional' | 'clientes' | 'inteligencia' | 'conexoes' | 'config';
+export type ModuleKey =
+  | 'inicio'
+  | 'operacao'
+  | 'crescimento'
+  | 'inteligencia'
+  | 'ia'
+  | 'gestao';
 
 export interface ModuleMeta {
   label: string;
@@ -50,70 +76,105 @@ export interface SidebarPermissionGroup {
 }
 
 export const MODULE_META: Record<ModuleKey, ModuleMeta> = {
-  dashboard: {
-    label: 'Dashboard',
-    description: 'Visão geral da operação',
+  inicio: {
+    label: 'Início',
+    description: 'Visão geral e primeiros passos',
   },
-  operacional: {
-    label: 'Operacional',
-    description: 'Atendimento, CRM e campanhas',
+  operacao: {
+    label: 'Operação',
+    description: 'Atendimento, pipeline, contatos e agenda',
   },
-  clientes: {
-    label: 'Clientes',
-    description: 'Clientes, faturas e pagamentos',
+  crescimento: {
+    label: 'Crescimento',
+    description: 'Campanhas e aquisição',
   },
   inteligencia: {
     label: 'Inteligência',
-    description: 'Agentes, automações e IA',
+    description: 'Brain, resultados e insights',
   },
-  conexoes: {
-    label: 'Conexões',
-    description: 'Canais, integrações e webhooks',
+  ia: {
+    label: 'IA e Automação',
+    description: 'Agentes e automações',
   },
-  config: {
-    label: 'Configurações',
-    description: 'Empresa, campos e regras',
+  gestao: {
+    label: 'Gestão',
+    description: 'Clientes, conexões e configurações',
   },
 };
 
+/** Ordem em que os grupos aparecem na sidebar. */
+export const MODULE_ORDER: ModuleKey[] = [
+  'inicio',
+  'operacao',
+  'crescimento',
+  'inteligencia',
+  'ia',
+  'gestao',
+];
+
+export const MODULE_ICON: Record<ModuleKey, LucideIcon> = {
+  inicio: LayoutDashboard,
+  operacao: MessageSquare,
+  crescimento: Megaphone,
+  inteligencia: Brain,
+  ia: Bot,
+  gestao: Building2,
+};
+
 export const SIDEBAR_MODULE_MENUS: Record<ModuleKey, MenuItem[]> = {
-  dashboard: [
-    {
-      path: '/dashboard',
-      label: 'Visão Geral',
-      icon: LayoutDashboard,
-      permission: 'dashboard',
-    },
+  inicio: [
+    { path: '/dashboard', label: 'Visão Geral', icon: LayoutDashboard, permission: 'dashboard' },
+    { path: '/getting_started', label: 'Começar', icon: Rocket, permission: 'dashboard', isNew: true },
   ],
-  operacional: [
+
+  operacao: [
+    { path: '/chat', label: 'Atendimento', icon: MessageSquare, permission: 'chat' },
     {
       path: '/crm',
-      label: 'CRM',
-      icon: Users,
+      label: 'Pipeline',
+      icon: Workflow,
       permission: 'crm',
       subItems: [
         { path: '/crm', label: 'Board', permission: 'crm' },
-        { path: '/contacts', label: 'Todos Contatos', permission: 'crm' },
         { path: '/tags', label: 'Filtros & Tags', permission: 'crm' },
       ],
     },
+    { path: '/contacts', label: 'Contatos', icon: Users, permission: 'crm' },
+    { path: '/calendar-config', label: 'Agenda', icon: Calendar, permission: 'company' },
+  ],
+
+  // Marketing, Funis, Anúncios e Conteúdo ainda não existem. Campanhas existe
+  // e é aquisição, então mantém o grupo com conteúdo real.
+  crescimento: [
     {
       path: '/campaigns',
       label: 'Campanhas',
       icon: Megaphone,
       permission: 'company',
       subItems: [
-        { path: '/campaigns/whatsapp', label: 'WhatsApp', icon: MessageSquare, permission: 'company', isNew: true },
+        { path: '/campaigns/whatsapp', label: 'WhatsApp', icon: WhatsAppIcon, permission: 'company', isNew: true },
+        { path: '/prompt/indicacoes', label: 'Indicações', icon: Share2, permission: 'company' },
       ],
     },
-    { path: '/chat', label: 'Chat Ao Vivo', icon: MessageSquare, permission: 'chat' },
-    { path: '/calendar-config', label: 'Agenda', icon: Calendar, permission: 'company' },
   ],
-  clientes: [
+
+  // Brain, Resultados e Insights chegam nas próximas fases. Grupo vazio de
+  // propósito — o ProtectedLayout não renderiza grupo sem item.
+  inteligencia: [],
+
+  ia: [
+    { path: '/agents', label: 'Agentes', icon: Brain, permission: 'prompt', isNew: true },
+    { path: '/flows', label: 'Automações', icon: GitMerge, permission: 'prompt', isNew: true },
+  ],
+
+  gestao: [
     {
       path: '/customers',
-      label: 'Gestão',
+      label: 'Clientes',
       icon: Users,
+      permission: 'crm',
+      // Um workspace gerenciado não administra a carteira de quem o criou.
+      hiddenForManagedWorkspace: true,
       subItems: [
         { path: '/customers', label: 'Carteira', icon: Users, permission: 'crm' },
         { path: '/customers/invoices', label: 'Faturas', icon: Receipt, permission: 'crm' },
@@ -121,34 +182,31 @@ export const SIDEBAR_MODULE_MENUS: Record<ModuleKey, MenuItem[]> = {
         { path: '/customers/revenue', label: 'Receita & Churn', icon: CreditCard, permission: 'crm' },
       ],
     },
-  ],
-  inteligencia: [
-    {
-      path: '/agents',
-      label: 'Agentes',
-      icon: Brain,
-      permission: 'prompt',
-      isNew: true,
-    },
-    { path: '/flows', label: 'Automações', icon: GitMerge, permission: 'prompt', isNew: true },
-  ],
-  conexoes: [
-    { path: '/whatsapp', label: 'WhatsApp', icon: WhatsAppIcon, permission: 'whatsapp' },
     {
       path: '/integrations',
-      label: 'Integrações',
+      label: 'Conexões',
       icon: Plug,
       permission: 'company',
-      isNew: true,
+      subItems: [
+        { path: '/whatsapp', label: 'WhatsApp', icon: WhatsAppIcon, permission: 'whatsapp' },
+        { path: '/integrations', label: 'Integrações', icon: Plug, permission: 'company' },
+        { path: '/config/midias', label: 'Canais & Origens', icon: Share2, permission: 'company' },
+        { path: '/webhooks', label: 'Webhooks', icon: Webhook, isBeta: true, permission: 'prompt' },
+      ],
     },
-    { path: '/webhooks', label: 'Webhooks', icon: Webhook, isBeta: true, permission: 'prompt' },
-  ],
-  config: [
-    { path: '/account/profile', label: 'Perfil da conta', icon: UserRound, permission: 'company', isNew: true },
-    { path: '/company', label: 'Minha Empresa', icon: Building2, permission: 'company' },
-    { path: '/company/ai-provider', label: 'Provedor de IA', icon: KeyRound, permission: 'company' },
-    { path: '/config/midias', label: 'Canais & Origens', icon: Share2, isNew: true, permission: 'company' },
-    { path: '/company/custom-fields', label: 'Campos Personalizados', icon: ClipboardCheck, permission: 'company' },
+    {
+      path: '/company',
+      label: 'Configurações',
+      icon: Building2,
+      permission: 'company',
+      subItems: [
+        { path: '/company', label: 'Minha Empresa', icon: Building2, permission: 'company' },
+        { path: '/account/profile', label: 'Perfil da conta', icon: UserRound, permission: 'company' },
+        { path: '/company/ai-provider', label: 'Provedor de IA', icon: KeyRound, permission: 'company' },
+        { path: '/company/custom-fields', label: 'Campos Personalizados', icon: ClipboardCheck, permission: 'company' },
+        { path: '/company/controle-fluxos', label: 'Controle de Fluxos', icon: BarChart3, permission: 'company' },
+      ],
+    },
   ],
 };
 
@@ -159,7 +217,7 @@ const PERMISSION_META: Record<Permission, { icon: LucideIcon; label: string }> =
   whatsapp: { icon: WhatsAppIcon, label: 'WhatsApp' },
   'follow-up': { icon: ClipboardCheck, label: 'Follow-up' },
   prompt: { icon: Brain, label: 'Agentes e automações' },
-  company: { icon: Building2, label: 'Configurações e gestão' },
+  company: { icon: Compass, label: 'Configurações e gestão' },
 };
 
 const collectSubItems = (
@@ -248,22 +306,35 @@ export const getSidebarPermissionGroups = (): SidebarPermissionGroup[] => {
 };
 
 export const resolveActiveModule = (pathname: string): ModuleKey => {
-  if (pathname.startsWith('/dashboard')) return 'dashboard';
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/getting_started')) return 'inicio';
+
   if (
+    pathname.startsWith('/chat') ||
     pathname.startsWith('/crm') ||
     pathname.startsWith('/contacts') ||
-    pathname.startsWith('/campaigns') ||
-    pathname.startsWith('/chat') ||
-    pathname.startsWith('/calendar') ||
-    pathname.startsWith('/tags')
+    pathname.startsWith('/tags') ||
+    pathname.startsWith('/calendar')
   ) {
-    return 'operacional';
+    return 'operacao';
   }
-  if (pathname.startsWith('/customers')) return 'clientes';
-  if (pathname.startsWith('/prompt/support-group')) return 'conexoes';
-  if (pathname.startsWith('/agents') || pathname.startsWith('/prompt') || pathname.startsWith('/flows')) return 'inteligencia';
-  if (pathname.startsWith('/whatsapp') || pathname.startsWith('/integrations') || pathname.startsWith('/webhooks')) return 'conexoes';
-  if (pathname.startsWith('/account') || pathname.startsWith('/company') || pathname.startsWith('/config')) return 'config';
 
-  return 'dashboard';
+  if (pathname.startsWith('/campaigns') || pathname.startsWith('/prompt/indicacoes')) return 'crescimento';
+
+  if (pathname.startsWith('/agents') || pathname.startsWith('/flows') || pathname.startsWith('/prompt')) {
+    return 'ia';
+  }
+
+  if (
+    pathname.startsWith('/customers') ||
+    pathname.startsWith('/whatsapp') ||
+    pathname.startsWith('/integrations') ||
+    pathname.startsWith('/webhooks') ||
+    pathname.startsWith('/config') ||
+    pathname.startsWith('/company') ||
+    pathname.startsWith('/account')
+  ) {
+    return 'gestao';
+  }
+
+  return 'inicio';
 };

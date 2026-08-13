@@ -24,6 +24,8 @@ export interface MenuItem {
   isNew?: boolean;
   isBeta?: boolean;
   isGroup?: boolean;
+  /** Oculta o item em workspaces criados e geridos por outra empresa. */
+  hiddenForManagedWorkspace?: boolean;
 }
 
 export interface SubItem {
