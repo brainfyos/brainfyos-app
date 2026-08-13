@@ -233,6 +233,65 @@ def _clean_waha_chat_id(value: Any) -> str:
     )
 
 
+_LID_PHONE_CACHE: Dict[str, str] = {}
+
+
+def _resolve_waha_lid_to_phone(session_name: str, lid: str) -> Optional[str]:
+    """Traduz um JID @lid para o telefone real do contato.
+
+    O WhatsApp usa LID (Linked Identity) no lugar do telefone em parte dos
+    eventos. Sem traduzir, a mesma pessoa vira dois contatos distintos.
+
+    Resolve primeiro pelo ``contacts.sender_lid`` ja gravado, que nao depende de
+    rede, e so entao consulta a API do WAHA.
+    """
+    if not lid or "@lid" not in lid:
+        return None
+
+    cached = _LID_PHONE_CACHE.get(lid)
+    if cached:
+        return cached
+
+    # 1) mapeamento local, alimentado pelas mensagens recebidas
+    try:
+        from backend.db import SessionLocal
+        from sqlalchemy import text as _text
+
+        with SessionLocal() as db:
+            row = db.execute(
+                _text("SELECT phone FROM contacts WHERE sender_lid = :lid LIMIT 1"),
+                {"lid": lid},
+            ).fetchone()
+        if row and row.phone:
+            _LID_PHONE_CACHE[lid] = row.phone
+            logger.info("[WAHA LID] %s resolvido por contacts.sender_lid -> %s", lid, row.phone)
+            return row.phone
+    except Exception as exc:
+        logger.warning("[WAHA LID] Falha na resolucao local de %s: %s", lid, exc)
+
+    # 2) API do WAHA
+    try:
+        from backend.integrations.waha_sdk import get_client
+        from backend.config import WAHA_API_KEY, WAHA_BASE_URL
+
+        if not WAHA_API_KEY:
+            logger.warning("[WAHA LID] WAHA_API_KEY ausente; nao da para resolver %s", lid)
+            return None
+
+        client = get_client(base_url=WAHA_BASE_URL, api_key=WAHA_API_KEY)
+        phone = client.get_phone_by_lid(session_name, lid)
+        if phone:
+            phone = _clean_waha_chat_id(phone)
+            _LID_PHONE_CACHE[lid] = phone
+            logger.info("[WAHA LID] %s resolvido pela API do WAHA -> %s", lid, phone)
+            return phone
+        logger.warning("[WAHA LID] API do WAHA nao resolveu %s", lid)
+    except Exception as exc:
+        logger.error("[WAHA LID] Erro ao resolver %s pela API: %s", lid, exc)
+
+    return None
+
+
 def _waha_conversation_kind(payload: Dict[str, Any]) -> Optional[str]:
     """Classify non-direct WAHA chats using identifier fields only."""
     data = payload.get("_data")
@@ -573,8 +632,17 @@ def normalize_waha_payload(waha_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # 🔥 CORREÇÃO: Se for mensagem enviada (fromMe=True), o contato é o destinatário (to)
     if from_me and to_field:
-        phone = _clean_waha_chat_id(to_field)
-        logger.info(f"[WAHA Normalize] Mensagem enviada (fromMe), usando destinatário: {phone}")
+        # O WhatsApp endereça o destinatário por LID nas mensagens enviadas
+        # (ex: "78473481687122@lid"), enquanto as recebidas trazem o telefone.
+        # Sem resolver, a mesma conversa se parte em dois contatos e o histórico
+        # enviado some da tela.
+        if "@lid" in to_field:
+            phone = _resolve_waha_lid_to_phone(
+                waha_data.get("session", "default"), to_field
+            ) or _clean_waha_chat_id(to_field)
+        else:
+            phone = _clean_waha_chat_id(to_field)
+        logger.info(f"[WAHA Normalize] Mensagem enviada (fromMe), destinatário resolvido: {phone}")
 
     # Extrair telefone real do SenderAlt (formato: "5500000000004:96@s.whatsapp.net")
     elif sender_alt and "@s.whatsapp.net" in sender_alt:
