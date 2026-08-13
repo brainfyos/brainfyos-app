@@ -26,7 +26,7 @@ import re
 # usam `setdefault` e respeitam este.
 os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/brainfyos-tests.db")
 
-from sqlalchemy import BigInteger, text as sa_text
+from sqlalchemy import ARRAY, BigInteger, text as sa_text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.elements import TextClause
@@ -43,6 +43,17 @@ POSTGRES_CAST = re.compile(r"::\s*[a-zA-Z_][a-zA-Z0-9_]*")
 
 @compiles(JSONB, "sqlite")
 def _compile_jsonb_on_sqlite(type_, compiler, **kw):  # noqa: ANN001, ANN201
+    return "JSON"
+
+
+@compiles(ARRAY, "sqlite")
+def _compile_array_on_sqlite(type_, compiler, **kw):  # noqa: ANN001, ANN201
+    """``ARRAY`` vira ``JSON`` no SQLite -- compatibilidade só de DDL.
+
+    O SQLite não tem tipo array. Isto existe para ``create_all`` não falhar em
+    tabelas que apenas precisam existir (ex.: ``contact_tasks.tags``). Um teste
+    que realmente exercite semântica de array precisa de PostgreSQL.
+    """
     return "JSON"
 
 
