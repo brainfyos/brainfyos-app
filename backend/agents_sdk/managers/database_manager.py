@@ -228,36 +228,59 @@ class DatabaseAgentsManager:
             slot_datetime = scheduling_data.get("slot_datetime", "")
             dt = datetime.strptime(slot_datetime, "%d/%m/%Y %H:%M")
 
-            # Insert into agendamentos table
+            # agendamentos exige client_id e lead_id (NOT NULL). Resolve os dois
+            # pelo telefone do contato dentro da empresa.
+            phone = scheduling_data.get("customer_phone", self.phone)
+            lead = self.db.execute(text("""
+                SELECT id, client_id
+                  FROM leads
+                 WHERE phone = :phone
+                   AND company_id = :company_id
+                 ORDER BY id DESC
+                 LIMIT 1
+            """), {"phone": phone, "company_id": self.company_id}).fetchone()
+
+            if not lead:
+                logger.warning(
+                    "[DatabaseAgentsManager] Nenhum lead para %s na empresa %s; "
+                    "agendamento nao registrado.", phone, self.company_id
+                )
+                return False
+
+            # A tabela nao tem coluna de notas; o tipo de servico vai em
+            # 'interesse' e a origem em 'midia'.
             self.db.execute(text("""
                 INSERT INTO agendamentos (
+                    client_id,
+                    lead_id,
                     company_id,
-                    nome_cliente,
-                    telefone_cliente,
+                    nome,
+                    phone,
                     consulta_data,
-                    servico,
+                    interesse,
+                    midia,
                     status,
-                    origem,
-                    notas,
-                    created_at
+                    agendamento_realizado_em
                 ) VALUES (
+                    :client_id,
+                    :lead_id,
                     :company_id,
-                    :nome_cliente,
-                    :telefone_cliente,
+                    :nome,
+                    :phone,
                     :consulta_data,
-                    :servico,
-                    'agendado',
+                    :interesse,
                     'agents_sdk_database',
-                    :notas,
+                    'SCHEDULED',
                     NOW()
                 )
             """), {
+                "client_id": lead.client_id,
+                "lead_id": lead.id,
                 "company_id": self.company_id,
-                "nome_cliente": scheduling_data.get("customer_name", ""),
-                "telefone_cliente": scheduling_data.get("customer_phone", self.phone),
+                "nome": scheduling_data.get("customer_name", ""),
+                "phone": phone,
                 "consulta_data": dt,
-                "servico": scheduling_data.get("service_type", "Consulta"),
-                "notas": scheduling_data.get("notes", "Agendado via Agents SDK (Database)")
+                "interesse": scheduling_data.get("service_type", "Consulta"),
             })
 
             self.db.commit()

@@ -65,17 +65,17 @@ class SchedulingTools:
             from sqlalchemy import text
 
             # Verifica agendamentos existentes neste horário
+            # A tabela guarda data e hora juntas em consulta_data (timestamptz),
+            # nao em colunas separadas.
             existing = self.db.execute(text("""
                 SELECT COUNT(*) as count
                 FROM agendamentos
                 WHERE company_id = :company_id
-                AND data = :date
-                AND horario = :time
+                AND consulta_data = :slot_datetime
                 AND status IN ('SCHEDULED', 'CONFIRMED')
             """), {
                 'company_id': company_id,
-                'date': dt.date(),
-                'time': dt.time()
+                'slot_datetime': dt
             }).fetchone()
 
             if existing and existing.count > 0:

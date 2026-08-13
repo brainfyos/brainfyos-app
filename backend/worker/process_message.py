@@ -592,7 +592,7 @@ def process_incoming_zapi_message(data: Dict[str, Any], instance_id: str, audit_
             logger.info(f"[DEBUG_LEAD_CREATION] Conditions met - checking if {phone} is customer...")
             # VERIFICAR SE JÁ É CLIENTE ANTES DE CRIAR LEAD
             is_customer = db.execute(text("""
-                SELECT p.id FROM clientes p
+                SELECT p.id FROM customers p
                 JOIN contacts c ON p.contact_id = c.id
                 WHERE c.phone = :phone AND c.company_id = :company_id
                 LIMIT 1
@@ -654,7 +654,7 @@ def process_incoming_zapi_message(data: Dict[str, Any], instance_id: str, audit_
                 else:
                     # VERIFICAR SE JÁ É CLIENTE ANTES DE CRIAR LEAD
                     is_customer = db.execute(text("""
-                        SELECT p.id FROM clientes p
+                        SELECT p.id FROM customers p
                         JOIN contacts c ON p.contact_id = c.id
                         WHERE c.phone = :phone AND c.company_id = :company_id
                         LIMIT 1

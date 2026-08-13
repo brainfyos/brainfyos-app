@@ -241,6 +241,12 @@ class Contact(Base):
     thumbnail_url = Column(Text, nullable=True)
     sender_lid = Column(String(255), nullable=True)
 
+    # Arquivamento de contato.
+    archived = Column(Boolean, default=False, nullable=False)
+    archived_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    archived_by = Column(Integer, nullable=True)
+    archive_reason = Column(Text, nullable=True)
+
     client = relationship("Client", back_populates="contacts")
     company = relationship("Company", foreign_keys=[company_id])
 

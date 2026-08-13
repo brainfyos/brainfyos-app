@@ -283,10 +283,13 @@ def _save_message(
         # Se ainda não temos client_id, buscamos da empresa
         if not client_id:
              try:
-                 # Query raw para evitar import circular de Company se não estiver importado
-                 res = db.execute(text("SELECT client_id FROM companies WHERE id = :cid"), {"cid": company_id}).fetchone()
+                 # companies nao tem client_id; o vinculo vive em clients.company_id.
+                 res = db.execute(
+                     text("SELECT id FROM clients WHERE company_id = :cid ORDER BY id LIMIT 1"),
+                     {"cid": company_id},
+                 ).fetchone()
                  if res:
-                     client_id = str(res.client_id)
+                     client_id = str(res.id)
              except Exception:
                  pass
 
