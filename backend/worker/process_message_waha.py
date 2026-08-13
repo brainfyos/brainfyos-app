@@ -629,6 +629,8 @@ def normalize_waha_payload(waha_data: Dict[str, Any]) -> Dict[str, Any]:
     from_field = payload.get("from", "")
     to_field = payload.get("to", "")
     from_me = payload.get("fromMe", False)
+    # Vira True quando o telefone final ainda e um LID nao resolvido.
+    unresolved_lid = False
 
     # 🔥 CORREÇÃO: Se for mensagem enviada (fromMe=True), o contato é o destinatário (to)
     if from_me and to_field:
@@ -637,9 +639,12 @@ def normalize_waha_payload(waha_data: Dict[str, Any]) -> Dict[str, Any]:
         # Sem resolver, a mesma conversa se parte em dois contatos e o histórico
         # enviado some da tela.
         if "@lid" in to_field:
-            phone = _resolve_waha_lid_to_phone(
+            resolvido = _resolve_waha_lid_to_phone(
                 waha_data.get("session", "default"), to_field
-            ) or _clean_waha_chat_id(to_field)
+            )
+            # Sem resolucao, o valor segue sendo um LID: nao serve como telefone.
+            unresolved_lid = resolvido is None
+            phone = resolvido or _clean_waha_chat_id(to_field)
         else:
             phone = _clean_waha_chat_id(to_field)
         logger.info(f"[WAHA Normalize] Mensagem enviada (fromMe), destinatário resolvido: {phone}")
@@ -787,6 +792,7 @@ def normalize_waha_payload(waha_data: Dict[str, Any]) -> Dict[str, Any]:
         "photo": "",  # WAHA não fornece foto no payload de mensagem
         "fromApi": bool(from_me and message_source == "api"),
         "source": message_source,
+        "unresolvedLid": unresolved_lid,
     }
 
     reply_to_metadata = extract_waha_reply_to(payload)
@@ -2043,11 +2049,29 @@ def process_incoming_waha_message(self, task_data: Dict[str, Any]):
             except Exception as e:
                 logger.error(f"[WAHA Task] ❌ Erro ao processar vCard como indicação: {e}")
 
-        # 🔥 CORREÇÃO: APENAS criar/atualizar contatos para mensagens RECEBIDAS (fromMe=false)
-        # Mensagens fromMe=true (enviadas por nós) não devem criar contatos
-        # Isso evita criar contatos com IDs de canais (@lid) ou números falsos
-        if not from_me:
-            contact_name = sender_name
+        # Mensagens recebidas sempre criam/atualizam contato. Enviadas tambem,
+        # desde que o destinatario seja um telefone real: e assim que uma
+        # conversa iniciada por nos aparece no Chat Ao Vivo.
+        #
+        # A guarda original bloqueava todo fromMe porque o destinatario vinha
+        # como LID e gerava contatos com numeros falsos. Agora o LID e
+        # resolvido no normalizador, entao basta exigir que a resolucao tenha
+        # dado certo e que a conversa seja direta (nem grupo, nem canal).
+        conversa_direta = not (
+            normalized_data.get("isGroup")
+            or normalized_data.get("isNewsletter")
+            or normalized_data.get("broadcast")
+        )
+        destinatario_valido = (
+            not normalized_data.get("unresolvedLid")
+            and str(phone or "").isdigit()
+        )
+
+        if not from_me or (conversa_direta and destinatario_valido):
+            # Em mensagens enviadas o PushName do payload e o nosso, nao o do
+            # destinatario. Usar o telefone evita batizar o contato com o
+            # proprio nome da conta; o nome real chega na primeira resposta.
+            contact_name = phone if from_me else sender_name
 
             contact_exists = db.execute(text("""
                 SELECT id, company_id, name
