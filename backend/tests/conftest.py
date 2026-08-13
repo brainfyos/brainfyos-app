@@ -26,7 +26,7 @@ import re
 # usam `setdefault` e respeitam este.
 os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/brainfyos-tests.db")
 
-from sqlalchemy import text as sa_text
+from sqlalchemy import BigInteger, text as sa_text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.elements import TextClause
@@ -44,6 +44,17 @@ POSTGRES_CAST = re.compile(r"::\s*[a-zA-Z_][a-zA-Z0-9_]*")
 @compiles(JSONB, "sqlite")
 def _compile_jsonb_on_sqlite(type_, compiler, **kw):  # noqa: ANN001, ANN201
     return "JSON"
+
+
+@compiles(BigInteger, "sqlite")
+def _compile_bigint_on_sqlite(type_, compiler, **kw):  # noqa: ANN001, ANN201
+    """``BIGINT`` vira ``INTEGER`` no SQLite.
+
+    Só ``INTEGER PRIMARY KEY`` recebe autoincremento (rowid) no SQLite; um
+    ``BIGINT PRIMARY KEY`` fica NOT NULL sem valor gerado, e todo insert falha.
+    Nenhuma precisão se perde: inteiro em SQLite já é de 64 bits.
+    """
+    return "INTEGER"
 
 
 def _strip_postgres_casts_from_server_defaults() -> None:
