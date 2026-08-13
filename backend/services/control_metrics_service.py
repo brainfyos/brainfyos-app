@@ -577,7 +577,11 @@ def get_ai_usage_timeseries(db: Session, *, days: int, company_id: Optional[int]
             f"""
             WITH days AS (
                 SELECT generate_series(
-                    date_trunc('day', :since::timestamptz),
+                    -- CAST(...) e nao ``:since::timestamptz``: o parser de
+                    -- text() do SQLAlchemy ignora um bind seguido de '::',
+                    -- justamente para nao confundir cast com parametro. O
+                    -- ':since' chegaria cru ao Postgres.
+                    date_trunc('day', CAST(:since AS timestamptz)),
                     date_trunc('day', now()),
                     interval '1 day'
                 ) AS bucket
