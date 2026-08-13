@@ -24,19 +24,12 @@ from backend.services.onboarding_service import (
 
 COMPANY = 55
 
-TABLES = [
-    Company.__table__,
-    OnboardingAnswer.__table__,
-    BrainBusinessProfile.__table__,
-    BrainIcpProfile.__table__,
-    BrainOffer.__table__,
-]
 
 
 @pytest.fixture()
 def db_session():
     engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine, tables=TABLES)
+    Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     db = Session()
     try:

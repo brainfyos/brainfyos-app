@@ -33,25 +33,14 @@ from backend.services.brain.schemas import BrainScope, SourceType
 
 COMPANY = 7
 
-TABLES = [
-    BusinessType.__table__,
-    Company.__table__,
-    Contact.__table__,
-    Lead.__table__,
-    Message.__table__,
-    Plan.__table__,
-    Contract.__table__,
-    BrainBusinessProfile.__table__,
-    BrainIcpProfile.__table__,
-    BrainOffer.__table__,
-    BrainGoal.__table__,
-]
 
 
 @pytest.fixture()
 def db_session():
     engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine, tables=TABLES)
+    # Schema inteiro: o Context Engine toca muitas tabelas e enumerá-las
+    # à mão faz o teste quebrar por tabela faltando, não por regressão.
+    Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     db = Session()
     try:
