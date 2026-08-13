@@ -2453,9 +2453,6 @@ def reset_whatsapp_config(user=Depends(get_current_user), db: Session = Depends(
             UPDATE companies
                SET zapi_instance_id = NULL,
                    zapi_token = NULL,
-                   wppconnect_session_name = NULL,
-                   wppconnect_secret_key = NULL,
-                   wppconnect_base_url = NULL,
                    waha_session_name = NULL,
                    waha_enabled = false
              WHERE id = :cid
@@ -2519,9 +2516,6 @@ def _persist_active_waha_configuration(
             UPDATE companies
                SET zapi_instance_id = NULL,
                    zapi_token = NULL,
-                   wppconnect_session_name = NULL,
-                   wppconnect_secret_key = NULL,
-                   wppconnect_base_url = NULL,
                    waha_session_name = :session_name,
                    waha_enabled = true
              WHERE id = :cid
