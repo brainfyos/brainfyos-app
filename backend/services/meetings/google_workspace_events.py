@@ -122,7 +122,7 @@ def get_subscription_state(db: Session, company_id: int) -> SubscriptionState:
         return SubscriptionState(status=STATUS_INACTIVE)
 
     status = integration.meet_subscription_status or STATUS_INACTIVE
-    expires_at = integration.meet_subscription_expires_at
+    expires_at = _as_aware(integration.meet_subscription_expires_at)
 
     # Expiração é fato, não opinião: se a data passou, o estado gravado está
     # desatualizado e o que vale é o relógio.
@@ -133,7 +133,7 @@ def get_subscription_state(db: Session, company_id: int) -> SubscriptionState:
         status=status,
         name=integration.meet_subscription_name,
         expires_at=expires_at,
-        last_event_at=integration.meet_last_event_at,
+        last_event_at=_as_aware(integration.meet_last_event_at),
         error=integration.meet_subscription_error,
     )
 
@@ -376,6 +376,18 @@ def _authorized_session(provider: GoogleMeetProvider, db: Session, company_id: i
     # e renovar o token do Google.
     credentials = provider._credentials(db, company_id)  # noqa: SLF001
     return AuthorizedSession(credentials)
+
+
+def _as_aware(value: Optional[datetime]) -> Optional[datetime]:
+    """Garante datetime com fuso antes de qualquer comparação.
+
+    Uma coluna ``TIMESTAMP(timezone=True)`` volta aware no Postgres e **naive**
+    no SQLite. Comparar os dois levanta TypeError, e a falha apareceria só no
+    ambiente onde a coluna perdeu o fuso — o pior tipo de bug para diagnosticar.
+    """
+    if value is None:
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 def _parse_time(value: Optional[str]) -> Optional[datetime]:

@@ -17,7 +17,6 @@ evento que continuará falhando.
 from __future__ import annotations
 
 import base64
-import binascii
 import json
 import logging
 import os
@@ -83,7 +82,9 @@ def _decode_message(envelope: Dict[str, Any]) -> Dict[str, Any]:
     if raw:
         try:
             payload = json.loads(base64.b64decode(raw).decode("utf-8"))
-        except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError):
+        # ValueError cobre binascii.Error (subclasse) e o erro de conteúdo
+        # não-ASCII que o b64decode levanta antes de tentar decodificar.
+        except (ValueError, UnicodeDecodeError):
             # Corpo ilegível não é motivo para reentrega infinita — os
             # atributos ainda podem trazer o tipo e o recurso.
             logger.warning("Evento do Meet com corpo ilegível")
