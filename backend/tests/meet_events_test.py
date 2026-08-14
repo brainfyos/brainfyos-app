@@ -14,7 +14,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.models import Base, CalendarIntegration, Company, Contact, Lead
+from backend.models import Base, CalendarIntegration, Company
 from backend.models.meeting_models import Meeting, MeetingTranscript, PROVIDER_GOOGLE_MEET
 from backend.services.meetings import google_workspace_events as events
 from backend.services.meetings.capabilities import describe_capabilities
