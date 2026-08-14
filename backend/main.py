@@ -433,6 +433,10 @@ app.include_router(onboarding_router, prefix="/api", tags=["Onboarding"])
 from backend.routes.brain_routes import router as brain_router
 app.include_router(brain_router, prefix="/api", tags=["Brain"])
 
+# Meeting Intelligence: reunioes, transcricoes, analise e sugestoes de CRM.
+from backend.routes.meeting_routes import router as meeting_router
+app.include_router(meeting_router, prefix="/api", tags=["Meetings"])
+
 app.include_router(whatsapp_campaign_routes_router, tags=["WhatsApp Campaigns"])
 from backend.routes import calendar_routes
 app.include_router(calendar_routes.router, prefix="/api/calendar", tags=["Calendar"])

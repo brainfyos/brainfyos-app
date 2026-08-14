@@ -55,6 +55,15 @@ from backend.models.brain_models import (
     BrainGoal,
 )
 
+from backend.models.meeting_models import (
+    Meeting,
+    MeetingParticipant,
+    MeetingTranscript,
+    MeetingAnalysis,
+    SalesMemory,
+    CrmUpdateSuggestion,
+)
+
 from backend.models.onboarding_models import (
     OnboardingTemplate,
     OnboardingSection,
@@ -81,6 +90,12 @@ _all_exports.extend([
     'BrainIcpProfile',
     'BrainOffer',
     'BrainGoal',
+    'Meeting',
+    'MeetingParticipant',
+    'MeetingTranscript',
+    'MeetingAnalysis',
+    'SalesMemory',
+    'CrmUpdateSuggestion',
     'OnboardingTemplate',
     'OnboardingSection',
     'OnboardingItem',

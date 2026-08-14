@@ -58,6 +58,9 @@ class SourceType(str, Enum):
     INVOICE = "invoice"
     PAYMENT = "payment"
     NPS = "nps"
+    MEETING = "meeting"
+    TRANSCRIPT = "transcript"
+    SALES_MEMORY = "sales_memory"
 
 
 class SourceRef(BaseModel):
@@ -217,6 +220,8 @@ class SalesContext(ContextBlock):
     lost_in_period: int = 0
     focus_lead: Optional[LeadSummary] = None
     recent_leads: List[LeadSummary] = Field(default_factory=list)
+    recent_meetings: List["MeetingSummary"] = Field(default_factory=list)
+    sales_memory: Optional["SalesMemorySummary"] = None
 
 
 class MessageSummary(BaseModel):
@@ -258,6 +263,7 @@ class CustomerContext(ContextBlock):
     message_count: int = 0
     nps_score: Optional[int] = None
     upcoming_appointments: List[Dict[str, Any]] = Field(default_factory=list)
+    recent_meetings: List["MeetingSummary"] = Field(default_factory=list)
 
 
 class ContractSummary(BaseModel):
@@ -287,6 +293,43 @@ class MarketingContext(ContextBlock):
     """Reservado. Nenhuma fonte canonica de marketing existe ainda."""
 
     pass
+
+
+class MeetingSummary(BaseModel):
+    """Reunião como resumo estruturado.
+
+    Nunca carrega a transcrição. Um contexto de agente com uma hora de
+    conversa transcrita gasta o orçamento de token inteiro e enterra o sinal
+    no meio da conversa fiada. Quem precisa do detalhe busca a transcrição
+    pelo endpoint próprio.
+    """
+
+    id: int
+    title: Optional[str] = None
+    occurred_at: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    provider: Optional[str] = None
+    status: Optional[str] = None
+    summary: Optional[str] = None
+    main_problem: Optional[str] = None
+    sentiment: Optional[str] = None
+    objections: List[str] = Field(default_factory=list)
+    next_steps: List[str] = Field(default_factory=list)
+    commitments_company: List[str] = Field(default_factory=list)
+    commitments_customer: List[str] = Field(default_factory=list)
+    has_transcript: bool = False
+
+
+class SalesMemorySummary(BaseModel):
+    current_summary: Optional[str] = None
+    business_problem: Optional[str] = None
+    next_best_action: Optional[str] = None
+    confidence: Optional[str] = None
+    objections: List[str] = Field(default_factory=list)
+    risks: List[str] = Field(default_factory=list)
+    buying_signals: List[str] = Field(default_factory=list)
+    open_questions: List[str] = Field(default_factory=list)
+    last_rebuilt_at: Optional[datetime] = None
 
 
 # ---------------------------------------------------------------------------
@@ -321,3 +364,10 @@ class BrainContext(BaseModel):
             if block is not None:
                 collected.extend(block.sources)
         return collected
+
+
+# MeetingSummary e SalesMemorySummary sao declarados depois de SalesContext e
+# CustomerContext, entao as referencias adiante precisam ser resolvidas
+# explicitamente -- sem isto o Pydantic falha na primeira validacao.
+SalesContext.model_rebuild()
+CustomerContext.model_rebuild()

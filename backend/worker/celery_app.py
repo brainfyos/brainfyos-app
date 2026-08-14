@@ -74,6 +74,7 @@ app.conf.update(
         'backend.worker.agent_workforce_debounce',
         'backend.worker.tasks_flow',  # NOVO: para execução de flows FlowBuilder
         'backend.worker.tasks_whatsapp_campaign',  # NOVO: para campanhas de WhatsApp
+        'backend.worker.tasks_meetings',  # Meeting Intelligence
     ],
 
     # Roteamento de tasks para filas específicas
@@ -191,6 +192,15 @@ app.conf.update(
         'backend.worker.tasks_whatsapp_campaign.send_single_message_task': {
             'queue': 'whatsapp_campaign_queue',
         },
+
+        # Meeting Intelligence: fila propria para que analise de reuniao nao
+        # dispute worker com atendimento em tempo real.
+        'meetings.sync_company_meetings': {'queue': 'meetings_queue'},
+        'meetings.sync_all_companies': {'queue': 'meetings_queue'},
+        'meetings.import_transcript': {'queue': 'meetings_queue'},
+        'meetings.analyze_meeting': {'queue': 'meetings_queue'},
+        'meetings.rebuild_sales_memory': {'queue': 'meetings_queue'},
+        'meetings.generate_crm_suggestions': {'queue': 'meetings_queue'},
     },
 
     # Definir as filas disponíveis
@@ -209,6 +219,7 @@ app.conf.update(
         'agents_sdk_queue': {},  # NOVA fila para Agents SDK Database
         'flow_execution_queue': {},  # NOVA fila para execução de flows
         'whatsapp_campaign_queue': {},  # NOVA fila para campanhas de WhatsApp
+        'meetings_queue': {},  # Meeting Intelligence
     },
 )
 
@@ -236,6 +247,18 @@ app.conf.beat_schedule = {
         'options': {
             'queue': 'agents_sdk_queue',
             'priority': 7,
+        }
+    },
+
+    # Sincronizacao de reunioes a cada 15 minutos. Nao e polling: o Google
+    # so publica a transcricao depois que a conferencia encerra e o artefato
+    # nao muda depois, entao um ciclo mais curto so gastaria cota da API.
+    'sync-meetings-every-15min': {
+        'task': 'meetings.sync_all_companies',
+        'schedule': 900,
+        'options': {
+            'queue': 'meetings_queue',
+            'priority': 4,
         }
     },
 

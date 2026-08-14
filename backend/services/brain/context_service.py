@@ -65,10 +65,12 @@ from backend.services.brain.schemas import (
     IcpSummary,
     LeadSummary,
     MarketingContext,
+    MeetingSummary,
     MessageSummary,
     OfferSummary,
     PipelineStageSummary,
     SalesContext,
+    SalesMemorySummary,
     SourceRef,
     SourceType,
     StrategyContext,
@@ -539,7 +541,26 @@ class BrainContextService:
                 )
             )
 
+        meetings = self._recent_meetings(company_id, lead_id=lead_id, limit=limit)
+        if meetings:
+            sources.append(
+                SourceRef(
+                    source_type=SourceType.MEETING,
+                    table="meetings",
+                    record_count=len(meetings),
+                    record_ids=[meeting.id for meeting in meetings],
+                )
+            )
+
+        memory = self._sales_memory(company_id, lead_id) if lead_id else None
+        if memory is not None:
+            sources.append(
+                SourceRef(source_type=SourceType.SALES_MEMORY, table="sales_memories")
+            )
+
         return SalesContext(
+            recent_meetings=meetings,
+            sales_memory=memory,
             available=pipeline is not None or total_leads > 0,
             unavailable_reason=(
                 None if (pipeline is not None or total_leads > 0) else "Nenhum pipeline ou lead cadastrado"
@@ -682,7 +703,21 @@ class BrainContextService:
         if nps_score is not None:
             sources.append(SourceRef(source_type=SourceType.NPS, table="nps_responses", record_count=1))
 
+        contact_meetings = self._recent_meetings(
+            company_id, contact_id=contact.id if contact else None, limit=limit
+        )
+        if contact_meetings:
+            sources.append(
+                SourceRef(
+                    source_type=SourceType.MEETING,
+                    table="meetings",
+                    record_count=len(contact_meetings),
+                    record_ids=[meeting.id for meeting in contact_meetings],
+                )
+            )
+
         return CustomerContext(
+            recent_meetings=contact_meetings,
             contact=self._contact_summary(contact) if contact else None,
             customer=self._customer_summary(customer) if customer else None,
             recent_messages=messages,
@@ -818,6 +853,109 @@ class BrainContextService:
             }
             for row in rows
         ]
+
+    # ------------------------------------------------------------------
+    # Reunioes
+    # ------------------------------------------------------------------
+
+    def _recent_meetings(
+        self,
+        company_id: int,
+        *,
+        lead_id: Optional[int] = None,
+        contact_id: Optional[int] = None,
+        limit: int = DEFAULT_LIMIT,
+    ) -> List[MeetingSummary]:
+        """Reunioes como resumo estruturado -- nunca a transcricao.
+
+        A transcricao inteira num prompt gasta o orcamento de token e afoga o
+        sinal. ``has_transcript`` diz que o detalhe existe; quem precisar dele
+        busca pelo endpoint proprio.
+        """
+        from backend.models.meeting_models import Meeting, MeetingAnalysis
+
+        if lead_id is None and contact_id is None:
+            return []
+
+        query = (
+            self._db.query(Meeting)
+            .filter(Meeting.company_id == company_id)
+        )
+        if lead_id is not None:
+            query = query.filter(Meeting.lead_id == int(lead_id))
+        else:
+            query = query.filter(Meeting.contact_id == int(contact_id))
+
+        meetings = (
+            query.order_by(Meeting.scheduled_start_at.desc().nullslast(), Meeting.id.desc())
+            .limit(limit)
+            .all()
+        )
+        if not meetings:
+            return []
+
+        # Uma consulta para todas as analises; sem isto seria um SELECT por
+        # reuniao dentro do laco.
+        analyses = (
+            self._db.query(MeetingAnalysis)
+            .filter(
+                MeetingAnalysis.company_id == company_id,
+                MeetingAnalysis.meeting_id.in_([meeting.id for meeting in meetings]),
+            )
+            .order_by(MeetingAnalysis.analysis_version.asc())
+            .all()
+        )
+        latest: Dict[int, Any] = {}
+        for analysis in analyses:
+            latest[analysis.meeting_id] = analysis
+
+        summaries: List[MeetingSummary] = []
+        for meeting in meetings:
+            analysis = latest.get(meeting.id)
+            summaries.append(
+                MeetingSummary(
+                    id=meeting.id,
+                    title=meeting.title,
+                    occurred_at=meeting.scheduled_start_at,
+                    duration_minutes=(
+                        round(meeting.duration_seconds / 60) if meeting.duration_seconds else None
+                    ),
+                    provider=meeting.provider,
+                    status=meeting.status,
+                    summary=getattr(analysis, "summary", None),
+                    main_problem=getattr(analysis, "main_problem", None),
+                    sentiment=getattr(analysis, "sentiment", None),
+                    objections=_string_list(getattr(analysis, "objections", None)),
+                    next_steps=_string_list(getattr(analysis, "next_steps", None)),
+                    commitments_company=_string_list(getattr(analysis, "commitments_company", None)),
+                    commitments_customer=_string_list(getattr(analysis, "commitments_customer", None)),
+                    has_transcript=meeting.transcript_status == "imported",
+                )
+            )
+        return summaries
+
+    def _sales_memory(self, company_id: int, lead_id: int) -> Optional[SalesMemorySummary]:
+        from backend.models.meeting_models import SalesMemory
+
+        memory = (
+            self._db.query(SalesMemory)
+            .filter(SalesMemory.company_id == company_id, SalesMemory.lead_id == int(lead_id))
+            .first()
+        )
+        if memory is None:
+            return None
+
+        return SalesMemorySummary(
+            current_summary=memory.current_summary,
+            business_problem=memory.business_problem,
+            next_best_action=memory.next_best_action,
+            confidence=memory.confidence,
+            objections=_string_list(memory.objections),
+            risks=_string_list(memory.risks),
+            buying_signals=_string_list(memory.buying_signals),
+            open_questions=_string_list(memory.open_questions),
+            last_rebuilt_at=memory.last_rebuilt_at,
+        )
 
     # ------------------------------------------------------------------
     # Financeiro
