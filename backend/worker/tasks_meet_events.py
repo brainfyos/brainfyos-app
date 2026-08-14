@@ -76,7 +76,10 @@ def _conference_record(event: Dict[str, Any]) -> Optional[str]:
     """
     subject = event.get("subject")
     if subject:
-        return str(subject)
+        # O subject do evento de transcrição aponta para o recurso completo
+        # (`conferenceRecords/x/transcripts/y`). O que resolve a empresa é o
+        # conferenceRecord, então o sufixo sai.
+        return str(subject).split("/transcripts/")[0]
 
     payload = event.get("payload") or {}
     for key in ("transcript", "conferenceRecord"):

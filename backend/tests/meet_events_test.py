@@ -356,7 +356,8 @@ def test_redis_dedupe_short_circuits_a_repeated_message(monkeypatch):
     from backend.worker import tasks_meet_events as worker
 
     monkeypatch.setattr(worker, "_already_processed", lambda _m: True)
-    result = worker.process_meet_event.__wrapped__(None, _event())
+    # Chamada direta executa a task sincronamente (Task.__call__).
+    result = worker.process_meet_event(_event())
 
     assert result["status"] == "duplicate"
 
@@ -411,7 +412,7 @@ def test_fallback_targets_degraded_subscriptions_and_skips_healthy(db, monkeypat
         worker.sync_company_meetings, "delay", lambda cid: scheduled.append(cid)
     )
 
-    summary = worker.sync_all_companies.__wrapped__()
+    summary = worker.sync_all_companies()
 
     assert summary["connected"] == 2
     assert scheduled == [COMPANY_B]
@@ -435,7 +436,7 @@ def test_fallback_rescues_a_stale_meeting_even_with_healthy_subscription(db, mon
         worker.sync_company_meetings, "delay", lambda cid: scheduled.append(cid)
     )
 
-    worker.sync_all_companies.__wrapped__()
+    worker.sync_all_companies()
 
     assert scheduled == [COMPANY_A]
 
