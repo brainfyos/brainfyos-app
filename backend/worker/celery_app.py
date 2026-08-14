@@ -75,6 +75,7 @@ app.conf.update(
         'backend.worker.tasks_flow',  # NOVO: para execução de flows FlowBuilder
         'backend.worker.tasks_whatsapp_campaign',  # NOVO: para campanhas de WhatsApp
         'backend.worker.tasks_meetings',  # Meeting Intelligence
+        'backend.worker.tasks_meet_events',  # Eventos do Google Meet
     ],
 
     # Roteamento de tasks para filas específicas
@@ -201,6 +202,8 @@ app.conf.update(
         'meetings.analyze_meeting': {'queue': 'meetings_queue'},
         'meetings.rebuild_sales_memory': {'queue': 'meetings_queue'},
         'meetings.generate_crm_suggestions': {'queue': 'meetings_queue'},
+        'meetings.process_meet_event': {'queue': 'meetings_queue'},
+        'meetings.renew_event_subscriptions': {'queue': 'meetings_queue'},
     },
 
     # Definir as filas disponíveis
@@ -250,9 +253,21 @@ app.conf.beat_schedule = {
         }
     },
 
-    # Sincronizacao de reunioes a cada 15 minutos. Nao e polling: o Google
-    # so publica a transcricao depois que a conferencia encerra e o artefato
-    # nao muda depois, entao um ciclo mais curto so gastaria cota da API.
+    # Fallback de recuperacao a cada 15 minutos. O caminho principal e o
+    # evento fileGenerated; este ciclo so resgata assinatura degradada e
+    # reuniao encerrada que continua sem transcricao.
+    # Renovacao das assinaturas do Workspace Events. Elas duram 7 dias e sao
+    # renovadas com 24h de folga, entao uma passada de hora em hora deixa
+    # espaco de sobra para retentativa antes de expirar de fato.
+    'renew-meet-subscriptions-hourly': {
+        'task': 'meetings.renew_event_subscriptions',
+        'schedule': 3600,
+        'options': {
+            'queue': 'meetings_queue',
+            'priority': 6,
+        }
+    },
+
     'sync-meetings-every-15min': {
         'task': 'meetings.sync_all_companies',
         'schedule': 900,

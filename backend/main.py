@@ -437,6 +437,11 @@ app.include_router(brain_router, prefix="/api", tags=["Brain"])
 from backend.routes.meeting_routes import router as meeting_router
 app.include_router(meeting_router, prefix="/api", tags=["Meetings"])
 
+# Push do Pub/Sub com os eventos do Google Meet. Autenticado por JWT OIDC
+# do proprio Pub/Sub, nao por sessao -- quem chama e o Google.
+from backend.routes.meet_events import router as meet_events_router
+app.include_router(meet_events_router, prefix="/webhook", tags=["Meet Events"])
+
 app.include_router(whatsapp_campaign_routes_router, tags=["WhatsApp Campaigns"])
 from backend.routes import calendar_routes
 app.include_router(calendar_routes.router, prefix="/api/calendar", tags=["Calendar"])

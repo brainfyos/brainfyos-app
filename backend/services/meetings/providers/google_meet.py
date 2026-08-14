@@ -259,7 +259,9 @@ class GoogleMeetProvider:
             external_transcript_id=transcript_name,
             text=text,
             segments=segments,
-            language=None,
+            language=next(
+                (segment.language_code for segment in segments if segment.language_code), None
+            ),
             source_available_at=_parse_time(transcript.get("endTime")),
             metadata={
                 "conference_record": record,
@@ -297,8 +299,14 @@ class GoogleMeetProvider:
 
     @staticmethod
     def _fetch_entries(session: Any, transcript_name: str) -> List[ProviderTranscriptSegment]:
+        """Todas as entradas, paginando até o fim.
+
+        Uma reunião longa passa de mil entradas; assumir uma única página
+        truncaria a conversa silenciosamente no meio.
+        """
         segments: List[ProviderTranscriptSegment] = []
         page_token: Optional[str] = None
+        base_time: Optional[datetime] = None
 
         while True:
             params: Dict[str, Any] = {"pageSize": 1000}
@@ -308,6 +316,10 @@ class GoogleMeetProvider:
                 session, f"{MEET_API_BASE}/{transcript_name}/entries", params=params
             )
             for entry in payload.get("transcriptEntries", []):
+                start = _parse_time(entry.get("startTime"))
+                end = _parse_time(entry.get("endTime"))
+                if base_time is None:
+                    base_time = start
                 segments.append(
                     ProviderTranscriptSegment(
                         text=entry.get("text") or "",
@@ -316,9 +328,11 @@ class GoogleMeetProvider:
                         # conservadora.
                         speaker_external_id=entry.get("participant"),
                         speaker=entry.get("participant"),
-                        start_time=_seconds_between(
-                            payload.get("_base_time"), entry.get("startTime")
-                        ),
+                        start_time=_offset(base_time, start),
+                        end_time=_offset(base_time, end),
+                        # O Google devolve o idioma por entrada; guardamos o
+                        # da primeira para o transcript inteiro.
+                        language_code=entry.get("languageCode"),
                     )
                 )
             page_token = payload.get("nextPageToken")
@@ -444,9 +458,8 @@ def _parse_time(value: Optional[str]) -> Optional[datetime]:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
-def _seconds_between(base: Optional[str], value: Optional[str]) -> Optional[float]:
-    start = _parse_time(base)
-    point = _parse_time(value)
-    if start is None or point is None:
+def _offset(base: Optional[datetime], point: Optional[datetime]) -> Optional[float]:
+    """Segundos desde o início da transcrição."""
+    if base is None or point is None:
         return None
-    return max(0.0, (point - start).total_seconds())
+    return max(0.0, (point - base).total_seconds())

@@ -550,6 +550,19 @@ class CalendarIntegration(Base):
     clinicorp_code_link = Column(String(255), nullable=True)
     clinicorp_subscriber_id = Column(String(255), nullable=True)
 
+    # Assinatura de eventos do Google Meet (Workspace Events API). Mora aqui
+    # porque já existe uma integração Google por empresa; uma tabela separada
+    # seria um 1:1 para manter em sincronia sem ganho.
+    meet_subscription_name = Column(String(255), nullable=True)
+    meet_subscription_expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    meet_subscription_status = Column(
+        String(20), nullable=False, server_default="inactive", default="inactive"
+    )
+    meet_subscription_error = Column(Text, nullable=True)
+    # Último evento realmente recebido: é o que distingue "o Google aceitou
+    # criar a assinatura" de "a entrega está funcionando".
+    meet_last_event_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
     # (opcional) caso você queira estabelecer relação com Company
     company = relationship("Company", back_populates="calendar_integrations")
 

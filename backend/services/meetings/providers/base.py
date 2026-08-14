@@ -78,6 +78,7 @@ class ProviderTranscriptSegment:
     speaker_external_id: Optional[str] = None
     start_time: Optional[float] = None
     end_time: Optional[float] = None
+    language_code: Optional[str] = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -86,6 +87,7 @@ class ProviderTranscriptSegment:
             "text": self.text,
             "start_time": self.start_time,
             "end_time": self.end_time,
+            "language_code": self.language_code,
         }
 
 

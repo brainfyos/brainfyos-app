@@ -34,10 +34,17 @@ SCOPES = [
     'https://www.googleapis.com/auth/calendar.readonly' # <-- ADICIONAR ESTE ESCOPO
 ]
 
+# Scope de leitura dos artefatos do Google Meet (conferenceRecords,
+# participants, transcripts). Sem ele a agenda conecta mas a Meeting
+# Intelligence nao consegue importar transcricao -- contas que autorizaram
+# antes desta linha existir precisam reconsentir.
+MEET_READONLY_SCOPE = "https://www.googleapis.com/auth/meetings.space.readonly"
+
 GOOGLE_OAUTH_SCOPES = [
     "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
     "https://www.googleapis.com/auth/calendar.app.created",
     "https://www.googleapis.com/auth/calendar.events.owned",
+    MEET_READONLY_SCOPE,
 ]
 
 

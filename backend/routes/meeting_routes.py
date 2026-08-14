@@ -219,6 +219,51 @@ def list_provider_status(
     return {"items": items}
 
 
+@router.get("/capabilities")
+def get_capabilities(
+    db: Session = Depends(get_db),
+    user: Union[Client, User] = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """O que a Meeting Intelligence consegue fazer nesta empresa, agora.
+
+    Diferencia Calendar, Meet, assinatura de eventos e geração de transcrição.
+    OAuth funcionando não implica transcrição automática funcionando, e a UI
+    precisa dessa distinção para não declarar operacional o que não está.
+    """
+    from backend.services.meetings.capabilities import describe_capabilities, transcription_guidance
+
+    company_id = _company_id(user)
+    capabilities = describe_capabilities(db, company_id)
+    payload = capabilities.as_dict()
+    payload["transcription_guidance"] = transcription_guidance()
+    return payload
+
+
+@router.post("/subscription")
+def create_subscription(
+    db: Session = Depends(get_db),
+    user: Union[Client, User] = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Cria ou renova a assinatura de eventos do Meet. Idempotente."""
+    from backend.services.meetings.google_workspace_events import (
+        WorkspaceEventsError,
+        ensure_subscription,
+    )
+
+    company_id = _company_id(user)
+    try:
+        state = ensure_subscription(db, company_id)
+    except WorkspaceEventsError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "status": state.status,
+        "expires_at": _iso(state.expires_at),
+        "last_event_at": _iso(state.last_event_at),
+        "error": state.error,
+    }
+
+
 @router.get("/{meeting_id}")
 def get_meeting(
     meeting_id: int,

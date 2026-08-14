@@ -8,13 +8,17 @@ chamada inteira, então nenhuma delas pode duplicar efeito — a garantia vem do
 `uq_meeting_transcript_external`, `uq_meeting_analysis_version`,
 `uq_crm_suggestion_dedupe`), não de uma flag em memória.
 
-**Estratégia de descoberta: sincronização agendada moderada, não polling.**
-O Google só publica a transcrição depois que a conferência encerra, e o
-artefato não muda depois disso. Um ciclo a cada 15 minutos captura a reunião
-poucos minutos após o fim; qualquer coisa mais frequente gastaria cota da API
-para receber a mesma resposta vazia. O Google Calendar oferece `watch`
-(push notification), mas ele avisa sobre mudança de *evento*, não sobre
-transcrição pronta — não resolveria o que precisamos observar.
+**O mecanismo principal é evento, não polling.** A Google Workspace Events
+API avisa quando a transcrição fica pronta
+(`google.workspace.meet.transcript.v2.fileGenerated`), entregue por Pub/Sub
+push em `routes/meet_events.py` e processada em `tasks_meet_events.py`.
+
+O ciclo periódico daqui é **fallback de recuperação**, não a via normal. Ele
+não varre tudo indiscriminadamente: procura só o que pode ter escapado —
+empresas com assinatura degradada ou expirada, e reuniões que terminaram há
+tempo suficiente e continuam sem transcrição. Empresa com assinatura saudável
+e nada pendente é pulada, para não gastar cota repetindo o que o evento já
+resolveu.
 """
 
 from __future__ import annotations
@@ -59,30 +63,75 @@ def sync_company_meetings(self, company_id: int, provider_name: Optional[str] = 
         db.close()
 
 
+# Depois deste tempo sem transcrição, uma reunião encerrada é considerada
+# "possivelmente perdida" e entra na recuperação. Curto demais dispararia
+# antes de o Google publicar; longo demais atrasaria demais o resgate.
+RECOVERY_AFTER_HOURS = 2
+
+
 @app.task(name="meetings.sync_all_companies")
 def sync_all_companies() -> Dict[str, Any]:
-    """Ciclo agendado. Só varre empresas com agenda conectada."""
+    """Fallback de recuperação. **Não** é o caminho normal.
+
+    O caminho normal é o evento `fileGenerated`. Aqui só entram empresas cuja
+    entrega por evento não está confiável, ou que têm reunião claramente
+    pendente. As demais são puladas: repetir o trabalho que o evento já fez
+    seria gastar cota do Google por nada.
+    """
+    from datetime import datetime, timedelta, timezone
+
     from backend.models import CalendarIntegration
+    from backend.models.meeting_models import Meeting
+    from backend.services.meetings import google_workspace_events as events
 
     db = SessionLocal()
     try:
-        rows = (
-            db.query(CalendarIntegration.company_id)
+        connected = (
+            db.query(CalendarIntegration)
             .filter(
                 CalendarIntegration.provider == "google",
                 CalendarIntegration.google_oauth_token.isnot(None),
             )
-            .distinct()
             .all()
         )
-        company_ids = [int(row[0]) for row in rows]
+
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=RECOVERY_AFTER_HOURS)
+        targets: Dict[int, str] = {}
+
+        for integration in connected:
+            company_id = int(integration.company_id)
+            status = integration.meet_subscription_status or events.STATUS_INACTIVE
+
+            # 1. Assinatura não confiável: o evento pode não estar chegando.
+            if status != events.STATUS_ACTIVE:
+                targets[company_id] = f"subscription_{status}"
+                continue
+
+            # 2. Assinatura saudável, mas há reunião encerrada e ainda muda.
+            #    Pode ser evento perdido — vale uma passada.
+            stale = (
+                db.query(Meeting.id)
+                .filter(
+                    Meeting.company_id == company_id,
+                    Meeting.status == "completed",
+                    Meeting.transcript_status.in_(("pending", "failed")),
+                    Meeting.scheduled_end_at.isnot(None),
+                    Meeting.scheduled_end_at <= cutoff,
+                )
+                .first()
+            )
+            if stale is not None:
+                targets[company_id] = "stale_transcript"
+
+        summary = {"connected": len(connected), "recovering": len(targets)}
     finally:
         db.close()
 
-    for company_id in company_ids:
+    for company_id, reason in targets.items():
+        logger.info("Recuperação de reuniões: company_id=%s motivo=%s", company_id, reason)
         sync_company_meetings.delay(company_id)
 
-    return {"scheduled": len(company_ids)}
+    return summary
 
 
 @app.task(name="meetings.import_transcript", bind=True, max_retries=MAX_RETRIES)
