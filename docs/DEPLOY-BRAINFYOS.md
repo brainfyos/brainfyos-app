@@ -44,7 +44,7 @@ O diretório `/etc/brainfyos` é `root:brainfyos 750` — o grupo precisa de per
 - Banco: `brainfyos`
 - Role: `brainfyos_app` (owner)
 - Conexão: `127.0.0.1:5432`, senha via `PGPASSWORD` (a `DATABASE_URL` não carrega credencial)
-- Migrations: `alembic` na versão `0006`
+- Migrations: `alembic` na versão `0007`
 
 ## Serviços systemd
 
@@ -240,7 +240,7 @@ O contrato de segurança anterior segue valendo: **nenhum ponto do código lê `
 
 | Variável | Impacto enquanto vazia |
 |---|---|
-| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | Sem integração com Google Agenda |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | Sem integração com Google Agenda **e sem Meeting Intelligence automática** — ver [MEETING-INTELLIGENCE.md](MEETING-INTELLIGENCE.md) |
 
 Depois de editar o arquivo: `systemctl restart brainfyos-api brainfyos-worker brainfyos-beat`.
 
