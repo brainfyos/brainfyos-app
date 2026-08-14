@@ -62,6 +62,21 @@ STATUS_EXPIRED = "expired"
 STATUS_FAILED = "failed"
 
 PUBSUB_TOPIC_ENV = "GOOGLE_MEET_PUBSUB_TOPIC"
+TARGET_RESOURCE_ENV = "GOOGLE_MEET_TARGET_RESOURCE"
+
+# Recurso assinado. `users/me` cobre todos os espaços do usuário autenticado,
+# que é o recorte que queremos: uma assinatura por conta conectada, não uma
+# por sala.
+#
+# Deixado configurável de propósito: este formato não pôde ser validado contra
+# a API real (sem credenciais), e trocá-lo por variável é mais barato que um
+# deploy caso o Google espere outra forma. O erro, se houver, aparece na
+# criação da assinatura e vira estado degradado — o fallback continua.
+DEFAULT_TARGET_RESOURCE = "//cloudidentity.googleapis.com/users/me"
+
+
+def target_resource() -> str:
+    return (os.getenv(TARGET_RESOURCE_ENV) or "").strip() or DEFAULT_TARGET_RESOURCE
 
 
 class WorkspaceEventsError(RuntimeError):
@@ -166,9 +181,7 @@ def _create(
     topic: str,
 ) -> SubscriptionState:
     payload = {
-        # `user:me` assina os eventos de todos os espaços do usuário
-        # autenticado — é o recorte que a Meet API oferece.
-        "targetResource": "//meet.googleapis.com/spaces/-",
+        "targetResource": target_resource(),
         "eventTypes": list(SUBSCRIBED_EVENT_TYPES),
         "notificationEndpoint": {"pubsubTopic": topic},
         "payloadOptions": {"includeResource": False},
@@ -393,6 +406,7 @@ __all__ = [
     "get_subscription_state",
     "pubsub_topic",
     "record_event_received",
+    "target_resource",
     "resolve_company_for_conference",
     "subscriptions_needing_renewal",
 ]

@@ -127,6 +127,7 @@ systemctl restart brainfyos-api brainfyos-worker brainfyos-beat
 | `GOOGLE_MEET_PUBSUB_TOPIC` | sim | Assinatura não é criada; só o fallback roda |
 | `GOOGLE_MEET_PUBSUB_SERVICE_ACCOUNT` | sim | Endpoint recusa toda entrega (503) |
 | `GOOGLE_MEET_PUBSUB_AUDIENCE` | recomendada | Validação do token fica mais fraca |
+| `GOOGLE_MEET_TARGET_RESOURCE` | não | Sobrescreve o recurso assinado. Padrão: `//cloudidentity.googleapis.com/users/me`. Só mexa se a criação da assinatura falhar reclamando do alvo. |
 
 ---
 
