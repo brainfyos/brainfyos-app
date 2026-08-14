@@ -13,6 +13,7 @@ import os
 os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/brainfyos-meetings-test.db")
 
 import json
+from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -423,7 +424,8 @@ def test_suggestion_must_be_accepted_before_it_applies(db, monkeypatch, fake_llm
 
     accept_suggestion(db, COMPANY_A, suggestion.id)
     db.refresh(lead)
-    assert str(lead.deal_value) == "5000"
+    # Numeric(12,2) devolve Decimal; comparar como texto dependeria da escala.
+    assert Decimal(str(lead.deal_value)) == Decimal("5000")
 
 
 def test_ai_can_never_mark_a_lead_as_won_or_lost(db, monkeypatch, fake_llm):

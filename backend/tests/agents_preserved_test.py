@@ -43,12 +43,27 @@ def test_prompt_compiler_signature_is_unchanged():
 
 
 def test_prompt_compiler_does_not_import_meeting_modules():
-    """A dependência aponta do Brain para o compilador, nunca ao contrário."""
+    """A dependência aponta do Brain para o compilador, nunca ao contrário.
+
+    A checagem é sobre *import*, não sobre a palavra: o compilador já mencionava
+    "meeting" antes desta fase (link do Google Meet no agendamento), e isso é
+    legítimo. O que não pode existir é dependência do domínio de reuniões.
+    """
+    import ast
+
     from backend.agents_sdk.agent_builder import prompt_compiler
 
-    source = inspect.getsource(prompt_compiler)
-    assert "meeting" not in source.lower()
-    assert "sales_memory" not in source.lower()
+    tree = ast.parse(inspect.getsource(prompt_compiler))
+    imported: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.append(node.module)
+
+    assert not any("services.meetings" in name for name in imported)
+    assert not any("meeting_models" in name for name in imported)
+    assert not any("services.brain" in name for name in imported)
 
 
 def test_extract_runtime_context_still_tolerates_any_object():
