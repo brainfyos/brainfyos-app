@@ -41,6 +41,7 @@ import GettingStarted from './pages/GettingStarted.tsx';
 // Brain Core — sob demanda: a página carrega os tokens do visual enterprise e
 // recharts, e nem toda sessão passa por ela.
 const BrainPage = React.lazy(() => import('./pages/brain/BrainPage.tsx'));
+const UnmatchedMeetings = React.lazy(() => import('./pages/UnmatchedMeetings.tsx'));
 
 // BrainfyOS Control — ambiente do proprietário da plataforma. Carregado sob
 // demanda: nenhum cliente baixa esse código, já que quase ninguém o acessa.
@@ -107,6 +108,7 @@ const App: React.FC = () => {
 
                   {/* Inteligência */}
                   <Route path="/brain" element={<BrainPage />} />
+                  <Route path="/meetings/unmatched" element={<UnmatchedMeetings />} />
 
                   {/* CRM e Contatos */}
                   <Route path="/crm" element={<CRMv4 />} />

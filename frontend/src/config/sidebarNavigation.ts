@@ -34,6 +34,7 @@ import {
   Share2,
   Users,
   UserRound,
+  Video,
   Webhook,
   Workflow,
   type LucideIcon,
@@ -129,6 +130,13 @@ export const SIDEBAR_MODULE_MENUS: Record<ModuleKey, MenuItem[]> = {
 
   operacao: [
     { path: '/chat', label: 'Atendimento', icon: MessageSquare, permission: 'chat' },
+    {
+      path: '/meetings/unmatched',
+      label: 'Reuniões',
+      icon: Video,
+      permission: 'crm',
+      isNew: true,
+    },
     {
       path: '/crm',
       label: 'Pipeline',
@@ -315,7 +323,8 @@ export const resolveActiveModule = (pathname: string): ModuleKey => {
     pathname.startsWith('/crm') ||
     pathname.startsWith('/contacts') ||
     pathname.startsWith('/tags') ||
-    pathname.startsWith('/calendar')
+    pathname.startsWith('/calendar') ||
+    pathname.startsWith('/meetings')
   ) {
     return 'operacao';
   }

@@ -39,6 +39,7 @@ import {
   AgentiveConfirmModal,
 } from './AgentiveUI.tsx';
 import './crm/LeadInspector/LeadInspector.css';
+import LeadMeetingsPanel from './meetings/LeadMeetingsPanel.tsx';
 import {
   CrmModernEmptyState,
   crmModernBadgeClass,
@@ -82,7 +83,7 @@ export interface LeadProfileProps {
   };
 }
 
-export type LeadProfileTab = 'overview' | 'activity' | 'attributes' | ChatProfileWorkMode;
+export type LeadProfileTab = 'overview' | 'activity' | 'meetings' | 'attributes' | ChatProfileWorkMode;
 
 const getInitials = (name?: string) => {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
@@ -562,6 +563,7 @@ export default function LeadProfile({
           {[
             { id: 'overview' as const, label: 'Resumo' },
             { id: 'activity' as const, label: 'Atividade' },
+            { id: 'meetings' as const, label: 'Reuniões' },
             { id: 'attributes' as const, label: 'Campos' },
             { id: 'notes' as const, label: 'Anotações' },
             { id: 'tasks' as const, label: 'Tarefas' },
@@ -649,6 +651,11 @@ export default function LeadProfile({
                   />
                 </div>
               )}
+
+              {/* Reunioes e inteligencia dentro do card que ja existe --
+                  nao e um segundo CRM. O painel se vira sozinho quando nao
+                  ha reuniao nenhuma. */}
+              {activeTab === 'meetings' && <LeadMeetingsPanel leadId={lead.id} />}
 
               {activeTab === 'activity' && (
                 <InfoCard title="Linha do tempo" icon={Calendar} isDark={isDark}>

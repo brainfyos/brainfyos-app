@@ -1,0 +1,146 @@
+/*
+  Reuniões no card do lead.
+  Usa os tokens do workspace (index.css) para acompanhar o tema da tela onde
+  vive. Nenhuma cor literal.
+*/
+
+.panel { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.section { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.sectionTitle {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.8125rem; font-weight: 600; margin: 0;
+  color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.sectionIcon { width: 15px; height: 15px; color: var(--text-muted); }
+
+.state, .empty {
+  font-size: 0.8125rem; color: var(--text-muted); margin: 0; line-height: 1.6;
+}
+
+.error {
+  padding: 0.75rem; border-radius: var(--radius-md);
+  background: var(--error-light); color: var(--error); font-size: 0.8125rem;
+}
+
+/* ------------------------------- Sugestões ------------------------------ */
+
+.suggestions { display: flex; flex-direction: column; gap: 0.625rem; }
+
+.suggestion {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-primary);
+  padding: 0.875rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+
+.suggestionHead { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+.badge, .badgeMuted {
+  font-size: 0.6875rem; padding: 0.15rem 0.5rem;
+  border-radius: 999px; white-space: nowrap;
+}
+.badge { background: var(--surface-tertiary); color: var(--text-primary); }
+.badgeMuted { background: transparent; border: 1px solid var(--border-default); color: var(--text-muted); }
+
+.confidence { font-size: 0.6875rem; color: var(--text-muted); }
+
+.diff { margin: 0; font-size: 0.8125rem; }
+.diffOld { color: var(--text-muted); text-decoration: line-through; }
+.diffNew { color: var(--text-primary); font-weight: 600; }
+
+.reason { margin: 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; }
+
+.suggestionActions { display: flex; gap: 0.5rem; }
+
+.acceptButton, .rejectButton, .ghostButton {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-family: inherit; font-size: 0.75rem; cursor: pointer;
+  padding: 0.35rem 0.7rem; border-radius: var(--radius-md);
+  transition: opacity var(--transition-base), border-color var(--transition-base);
+}
+.acceptButton svg, .rejectButton svg, .ghostButton svg { width: 13px; height: 13px; }
+
+.acceptButton { background: var(--brand-primary); color: var(--brand-white); border: none; }
+.acceptButton:hover:not(:disabled) { opacity: 0.88; }
+
+.rejectButton, .ghostButton {
+  background: transparent; border: 1px solid var(--border-default); color: var(--text-secondary);
+}
+.rejectButton:hover:not(:disabled), .ghostButton:hover { border-color: var(--border-hover); color: var(--text-primary); }
+
+.acceptButton:disabled, .rejectButton:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ------------------------------ Inteligência ---------------------------- */
+
+.memory, .meetingBody { display: flex; flex-direction: column; gap: 0.875rem; }
+
+.block { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.blockTitle {
+  font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.text { margin: 0; font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.6; }
+
+.list { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.list li { font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.5; }
+
+.nextAction {
+  border-left: 2px solid var(--brand-primary);
+  padding-left: 0.75rem;
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.chip {
+  font-size: 0.6875rem; padding: 0.15rem 0.5rem; border-radius: 999px;
+  background: var(--surface-tertiary); color: var(--text-secondary);
+}
+
+/* -------------------------------- Reuniões ------------------------------ */
+
+.meetings { display: flex; flex-direction: column; gap: 0.625rem; }
+
+.meeting {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-primary);
+  overflow: hidden;
+}
+
+.meetingHead {
+  width: 100%; display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.875rem; background: transparent; border: none;
+  cursor: pointer; text-align: left; font-family: inherit;
+}
+.meetingHead:hover { background: var(--hover-bg); }
+
+.meetingTitle { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; flex: 1; }
+.meetingTitle strong { font-size: 0.875rem; color: var(--text-primary); }
+.meetingMeta { font-size: 0.6875rem; color: var(--text-muted); }
+
+.meetingBadges { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+
+.chevron, .chevronOpen {
+  width: 15px; height: 15px; color: var(--text-muted);
+  transition: transform var(--transition-base);
+}
+.chevronOpen { transform: rotate(180deg); }
+
+.meetingBody { padding: 0 0.875rem 0.875rem; }
+
+/* Transcrição rola dentro do próprio contêiner: uma reunião de uma hora
+   tornaria o card do lead infinito. */
+.transcript {
+  max-height: 320px; overflow-y: auto;
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;
+  background: var(--surface-secondary);
+}
+
+.segment { margin: 0; font-size: 0.8125rem; line-height: 1.6; color: var(--text-secondary); }
+.speaker { font-weight: 600; color: var(--text-primary); margin-right: 0.35rem; }
