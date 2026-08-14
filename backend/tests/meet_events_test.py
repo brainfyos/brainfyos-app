@@ -370,13 +370,17 @@ def test_conference_ended_updates_state_from_the_provider(db, monkeypatch):
     _connect(db, COMPANY_A, status=events.STATUS_ACTIVE)
     monkeypatch.setattr(worker, "SessionLocal", lambda: db)
 
+    meeting_id = meeting.id
     worker._handle_conference_state(
         {"subject": "conferenceRecords/1", "payload": {}}, events.EVENT_CONFERENCE_ENDED
     )
 
-    db.refresh(meeting)
-    assert meeting.status == "completed"
-    assert meeting.ended_at is not None
+    # O serviço fecha a própria sessão (correto em produção, onde ela é dele).
+    # Como o teste compartilha a sessão, a instância antiga sai do escopo —
+    # consultamos de novo em vez de dar refresh numa referência expulsa.
+    updated = db.query(Meeting).filter(Meeting.id == meeting_id).one()
+    assert updated.status == "completed"
+    assert updated.ended_at is not None
 
 
 def test_receiving_an_event_recovers_a_degraded_subscription(db):
