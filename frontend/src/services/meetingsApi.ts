@@ -167,6 +167,25 @@ export interface ProviderStatus {
   missing_scopes: string[];
 }
 
+export interface MeetingCapabilities {
+  calendar_connected: boolean;
+  meet_access: boolean;
+  event_subscription_active: boolean;
+  transcript_access: boolean;
+  /** `null` = não foi possível determinar. Nunca exibir como sim ou não. */
+  auto_transcription_available: boolean | null;
+  subscription_status: string;
+  subscription_expires_at: string | null;
+  last_event_received_at: string | null;
+  oauth_configured: boolean;
+  pubsub_configured: boolean;
+  missing_scopes: string[];
+  needs_reconsent: boolean;
+  blockers: string[];
+  is_operational: boolean;
+  transcription_guidance: string[];
+}
+
 export interface FollowUpDraft {
   meeting_id: number;
   lead_id: number | null;
@@ -208,6 +227,16 @@ export const meetingsApi = {
   async providers(): Promise<ProviderStatus[]> {
     const response = await api.get<{ items: ProviderStatus[] }>('/meetings/providers');
     return response.data.items;
+  },
+
+  async capabilities(): Promise<MeetingCapabilities> {
+    const response = await api.get<MeetingCapabilities>('/meetings/capabilities');
+    return response.data;
+  },
+
+  async createSubscription(): Promise<{ status: string; expires_at: string | null }> {
+    const response = await api.post('/meetings/subscription');
+    return response.data;
   },
 
   async sync(): Promise<void> {

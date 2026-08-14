@@ -19,10 +19,11 @@ import {
   formatDateTime,
 } from '../components/control/ControlPrimitives.tsx';
 import { useAsyncData } from '../hooks/useAsyncData.ts';
+import MeetingCapabilityPanel from '../components/meetings/MeetingCapabilityPanel.tsx';
 import {
   meetingsApi,
   type Meeting,
-  type ProviderStatus,
+  type MeetingCapabilities,
   type ResolutionCandidate,
 } from '../services/meetingsApi.ts';
 import '../styles/control.css';
@@ -30,17 +31,21 @@ import '../styles/control.css';
 interface PageData {
   unmatched: Meeting[];
   ambiguous: Meeting[];
-  providers: ProviderStatus[];
+  capabilities: MeetingCapabilities;
 }
 
 const UnmatchedMeetings: React.FC = () => {
   const loader = useCallback(async (): Promise<PageData> => {
-    const [unmatchedPage, ambiguousPage, providers] = await Promise.all([
+    const [unmatchedPage, ambiguousPage, capabilities] = await Promise.all([
       meetingsApi.list({ resolutionStatus: 'unmatched', pageSize: 50 }),
       meetingsApi.list({ resolutionStatus: 'ambiguous', pageSize: 50 }),
-      meetingsApi.providers(),
+      meetingsApi.capabilities(),
     ]);
-    return { unmatched: unmatchedPage.items, ambiguous: ambiguousPage.items, providers };
+    return {
+      unmatched: unmatchedPage.items,
+      ambiguous: ambiguousPage.items,
+      capabilities,
+    };
   }, []);
 
   const { data, isLoading, error, reload } = useAsyncData<PageData>(loader, []);
@@ -89,46 +94,7 @@ const UnmatchedMeetings: React.FC = () => {
 
         {actionError && <ErrorState message={actionError} />}
 
-        <Panel title="Provedores" description="O que está disponível hoje nesta empresa" flush>
-          {isLoading || !data ? (
-            <SkeletonRows rows={2} />
-          ) : (
-            <div className="ctl-table-scroll">
-              <table className="ctl-table">
-                <thead>
-                  <tr>
-                    <th>Provedor</th>
-                    <th>Descobre reuniões</th>
-                    <th>Importa transcrição</th>
-                    <th>Situação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.providers.map((provider) => (
-                    <tr key={provider.provider}>
-                      <td className="ctl-cell-primary">{provider.label}</td>
-                      <td>
-                        <StatusPill tone={provider.can_discover_meetings ? 'positive' : 'neutral'}>
-                          {provider.can_discover_meetings ? 'Sim' : 'Não'}
-                        </StatusPill>
-                      </td>
-                      <td>
-                        <StatusPill tone={provider.can_import_transcripts ? 'positive' : 'warning'}>
-                          {provider.can_import_transcripts ? 'Sim' : 'Requer permissão'}
-                        </StatusPill>
-                      </td>
-                      {/* Nunca dizemos "conectado" quando a capacidade
-                          necessária não está disponível. */}
-                      <td className="ctl-cell-muted" style={{ whiteSpace: 'normal' }}>
-                        {provider.unavailable_reason || 'Operacional'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Panel>
+        {data && <MeetingCapabilityPanel capabilities={data.capabilities} onChanged={reload} />}
 
         {isLoading || !data ? (
           <Panel title="Carregando" flush>
